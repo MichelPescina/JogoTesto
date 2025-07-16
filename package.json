@@ -1,0 +1,22 @@
+{
+  "name": "jogotesto",
+  "version": "1.0.0",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test",
+    "lint": "eslint"
+  },
+  "author": "",
+  "license": "MIT",
+  "description": "",
+  "devDependencies": {
+    "dotenv": "^17.2.0",
+    "eslint": "^9.31.0",
+    "socket.io-client": "^4.8.1"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  }
+}

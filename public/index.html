@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JogoTesto - Multiplayer Text RPG</title>
+    <link rel="stylesheet" href="/style.css">
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>JogoTesto</h1>
+            <div class="status-bar">
+                <span id="connectionStatus" class="status disconnected">Disconnected</span>
+                <span id="playerCount" class="player-count">Players: 0</span>
+            </div>
+        </header>
+
+        <!-- Game Area -->
+        <main class="game-area">
+            <!-- Message Display Area -->
+            <div id="messages" class="messages" role="log" aria-label="Game messages">
+                <div class="system-message">
+                    Welcome to JogoTesto! Connect and start chatting with other players.
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="input-area">
+                <div class="input-group">
+                    <input 
+                        type="text" 
+                        id="messageInput" 
+                        class="message-input"
+                        placeholder="Enter your message or command..."
+                        maxlength="500"
+                        autocomplete="off"
+                        disabled
+                    >
+                    <button 
+                        id="sendButton" 
+                        class="send-button"
+                        disabled
+                        aria-label="Send message"
+                    >
+                        Send
+                    </button>
+                </div>
+                <div class="input-info">
+                    <span id="characterCount" class="character-count">0/500</span>
+                    <span class="help-text">Press Enter to send</span>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="game-info">
+                <p>Text-based multiplayer RPG engine built with Socket.IO</p>
+                <div id="debugInfo" class="debug-info" style="display: none;">
+                    <span>Player ID: <span id="playerId">N/A</span></span>
+                    <span>Ping: <span id="ping">N/A</span>ms</span>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Error Modal -->
+    <div id="errorModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h3>Error</h3>
+            <p id="errorMessage"></p>
+            <button id="closeErrorModal" class="modal-button">Close</button>
+        </div>
+    </div>
+
+    <!-- Client-side JavaScript -->
+    <script src="/client.js"></script>
+</body>
+</html>
