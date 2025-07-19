@@ -124,7 +124,7 @@ describe('RoomSystem', () => {
       
       assert.strictEqual(result, false);
       assert.strictEqual(roomSystem.isLoaded, false);
-      console.log(roomSystem.rooms)
+      console.log(roomSystem.rooms);
       assert.strictEqual(roomSystem.rooms.size, 0);
     });
 

@@ -23,6 +23,7 @@ JogoTesto is a multiplayer text-based RPG experiment that uses AI-driven develop
 - `data/` - Game data (rooms, etc.)
 
 ## Common Commands
+- `npm install` - Install dependencies
 - `npm start` - Start the server
 - `npm test` - Run tests
 - `npm run lint` - Run ESLint

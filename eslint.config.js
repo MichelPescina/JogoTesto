@@ -27,7 +27,9 @@ module.exports = [
         // Browser globals for client-side code
         window: 'readonly',
         document: 'readonly',
-        io: 'readonly'
+        localStorage: 'readonly',
+        io: 'readonly',
+        confirm: 'readonly'
       }
     },
     rules: {

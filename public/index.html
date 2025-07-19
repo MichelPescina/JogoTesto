@@ -15,11 +15,64 @@
             <div class="status-bar">
                 <span id="connectionStatus" class="status disconnected">Disconnected</span>
                 <span id="playerCount" class="player-count">Players: 0</span>
+                <span id="matchInfo" class="match-info" style="display: none;">Match: <span id="matchId">N/A</span></span>
             </div>
         </header>
 
+        <!-- Lobby Screen -->
+        <main id="lobbyScreen" class="lobby-screen">
+            <div class="lobby-content">
+                <h2>Welcome to JogoTesto Battle Royale</h2>
+                <p>Enter your username to join the matchmaking queue.</p>
+                
+                <div class="username-form">
+                    <input 
+                        type="text" 
+                        id="usernameInput" 
+                        class="username-input"
+                        placeholder="Enter your username (2-20 characters)"
+                        maxlength="20"
+                        autocomplete="off"
+                    >
+                    <button 
+                        id="joinMatchButton" 
+                        class="join-match-button"
+                        aria-label="Join match queue"
+                    >
+                        Join Match Queue
+                    </button>
+                </div>
+                
+                <div id="lobbyInfo" class="lobby-info">
+                    <p>Up to 50 players per match. Matches start with a minimum of 10 players.</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- Matchmaking Screen -->
+        <main id="matchmakingScreen" class="matchmaking-screen" style="display: none;">
+            <div class="matchmaking-content">
+                <h2>Searching for Match</h2>
+                <div class="loading-spinner"></div>
+                <div id="queueStatus" class="queue-status">
+                    <p>Position in queue: <span id="queuePosition">-</span></p>
+                    <p>Players needed: <span id="playersNeeded">-</span></p>
+                </div>
+                <button id="cancelQueueButton" class="cancel-queue-button">Cancel Queue</button>
+            </div>
+        </main>
+
         <!-- Game Area -->
-        <main class="game-area">
+        <main id="gameScreen" class="game-area" style="display: none;">
+            <!-- Match Status Bar -->
+            <div id="matchStatusBar" class="match-status-bar">
+                <div class="match-stats">
+                    <span>Players: <span id="matchPlayerCount">0</span></span>
+                    <span>Time: <span id="matchTime">00:00</span></span>
+                </div>
+                <button id="forfeitButton" class="forfeit-button">Forfeit Match</button>
+            </div>
+
             <!-- Message Display Area -->
             <div id="messages" class="messages" role="log" aria-label="Game messages">
                 <div class="system-message">
@@ -50,7 +103,7 @@
                 </div>
                 <div class="input-info">
                     <span id="characterCount" class="character-count">0/500</span>
-                    <span class="help-text">Press Enter to send</span>
+                    <span class="help-text">Press Enter to send | /forfeit to quit match</span>
                 </div>
             </div>
         </main>
