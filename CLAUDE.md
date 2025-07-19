@@ -34,22 +34,25 @@ JogoTesto is a multiplayer text-based RPG experiment that uses AI-driven develop
 - **Use node:test for unit tests on the backend**
 - **Never create a file longer than 500 lines of code.** If a file approaches this limit, refactor by splitting it into modules or helper files.
 - **Organize code into clearly separated modules,** grouped by feature or responsibility.
-- **Always create tests BEFORE**
-	- Include at least:
-		- 1 test for expected use
-		- 1 edge case
-		- 1 failure case
+- **Preferably create tests before implementation (TDD)**
 
-## Core Development Philosophy
+### Core Development Philosophy
 
 - **KISS (Keep It Simple, Stupid).** Simplicity should be a key goal in design. Choose straightforward solutions over complex ones whenever possible. Simple solutions are easier to understand, maintain, and debug.
 - **YAGNI (You Aren't Gonna Need It).** Avoid building functionality on speculation. Implement features only when they are needed, not when you anticipate they might be useful in the future.
 
+### Design Principles
+- **Modular Architecture**: Build with small, focused modules that do one thing well
+- **Error-First Callbacks**: Always handle errors as the first parameter in callbacks
+- **Async by Default**: Use async/await for all I/O operations
+- **Fail Fast**: Validate inputs early and throw meaningful errors immediately
+- **Security First**: Never trust user input, always validate and sanitize
+
 ## AI Behavior Rules
 - **Never assume missing context. Ask questions if uncertain.**
-- **Never hallucinate libraries or functions** – only use known, verified Python packages.
+- **Never hallucinate modules or functions** – only use known, verified javascript modules.
 - **Always confirm file paths and module names** exist before referencing them in code or tests.
-- **Never delete or overwrite existing code** unless explicitly instructed to or if part of a task from `TASK.md`.
+- **Never delete or overwrite existing code** unless explicitly instructed to.
 
 ## Development Notes
 - The project uses a room-based system for game navigation

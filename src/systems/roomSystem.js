@@ -82,7 +82,7 @@ class RoomSystem {
       
     } catch (error) {
       console.error('Failed to load rooms:', error.message);
-      this.rooms.clear()
+      this.rooms.clear();
       this.isLoaded = false;
       return false;
     }

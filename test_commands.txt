@@ -1,0 +1,6 @@
+/help
+/look
+hello from test client
+/go north
+/look
+/exit
