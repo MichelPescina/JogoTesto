@@ -149,18 +149,8 @@ describe('Navigation Integration Tests', () => {
             return;
           }
 
-          // Handle /chat commands
-          if (message.startsWith('/chat ') || message === '/chat') {
-            handleChatCommand(socket, message);
-            return;
-          }
-
-          // Default: treat as regular message
-          socket.emit('messageReceived', {
-            playerId: socket.id,
-            text: data.text,
-            timestamp: new Date().toISOString()
-          });
+          // Default: Handle as room-based chat message
+          handleDefaultRoomChat(socket, data.text);
         });
 
         // Handle disconnection
@@ -261,19 +251,11 @@ describe('Navigation Integration Tests', () => {
         }
 
         /**
-         * Handle chat commands
+         * Handle default room-based chat for all non-command messages
          */
-        function handleChatCommand(socket, message) {
-          let chatText = '';
-          if (message.startsWith('/chat ')) {
-            chatText = message.substring(6).trim();
-          }
-
-          if (!chatText) {
-            socket.emit('gameMasterMessage', {
-              text: 'Say what? Please provide a message (e.g., "/chat Hello everyone!").',
-              timestamp: new Date().toISOString()
-            });
+        function handleDefaultRoomChat(socket, chatText) {
+          // Skip empty messages
+          if (!chatText || !chatText.trim()) {
             return;
           }
 
@@ -293,7 +275,7 @@ describe('Navigation Integration Tests', () => {
           const chatMessageData = {
             playerId: socket.id,
             playerName: playerData.name,
-            text: chatText,
+            text: chatText.trim(),
             timestamp: new Date().toISOString(),
             roomId: currentRoom,
             messageType: 'roomChat'
@@ -306,13 +288,13 @@ describe('Navigation Integration Tests', () => {
               if (playerId === socket.id) {
                 playerSocket.emit('roomChatMessage', {
                   ...chatMessageData,
-                  text: `You say: "${chatText}"`,
+                  text: `You say: "${chatText.trim()}"`,
                   isSelf: true
                 });
               } else {
                 playerSocket.emit('roomChatMessage', {
                   ...chatMessageData,
-                  text: `${playerData.name} says: "${chatText}"`,
+                  text: `${playerData.name} says: "${chatText.trim()}"`,
                   isSelf: false
                 });
               }
@@ -550,7 +532,7 @@ describe('Navigation Integration Tests', () => {
       function checkBothReady() {
         if (client1Ready && client2Ready && !chatReceived) {
           // Both ready, send chat message
-          client1.emit('playerMessage', { text: '/chat Hello from client1' });
+          client1.emit('playerMessage', { text: 'Hello from client1' });
         }
       }
 
@@ -569,7 +551,7 @@ describe('Navigation Integration Tests', () => {
           moved = true;
         } else if (data.text.includes('Test Room') && moved) {
           // Now in test room, try to chat
-          client.emit('playerMessage', { text: '/chat Hello empty room' });
+          client.emit('playerMessage', { text: 'Hello empty room' });
         } else if (data.text.includes('speak to the empty air')) {
           // Should get empty room message
           assert.match(data.text, /speak to the empty air.*no one is here/);
@@ -671,10 +653,11 @@ describe('Navigation Integration Tests', () => {
       client.on('gameMasterMessage', (data) => {
         if (!connected && data.text.includes('Welcome')) {
           connected = true;
-          // Send empty chat command
+          // Test that "/chat" is now treated as regular message
           client.emit('playerMessage', { text: '/chat' });
-        } else if (data.text.includes('Say what?')) {
-          assert.match(data.text, /Say what\? Please provide a message/);
+        } else if (data.text.includes('speak to the empty air')) {
+          // Should get empty room message since /chat is now a regular message
+          assert.match(data.text, /speak to the empty air.*no one is here/);
           client.disconnect();
           done();
         }

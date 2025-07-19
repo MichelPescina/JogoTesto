@@ -130,21 +130,8 @@ io.on('connection', (socket) => {
         return;
       }
       
-      if (message.startsWith('/chat ') || message === '/chat') {
-        handleChatCommand(socket, message);
-        return;
-      }
-      
-      // Broadcast message to all players in the game room (existing functionality)
-      const messageData = {
-        playerId: socket.id,
-        text: data.text,
-        timestamp: new Date().toISOString()
-      };
-
-      io.to('gameRoom').emit('messageReceived', messageData);
-      
-      console.log(`Message from ${socket.id}: ${data.text}`);
+      // Default: Handle as room-based chat message
+      handleDefaultRoomChat(socket, data.text);
     } catch (error) {
       console.error('Error handling player message:', error);
       socket.emit('error', {
@@ -341,11 +328,11 @@ function handleLookCommand(socket) {
 }
 
 /**
- * Handle room-based chat commands (/chat message)
+ * Handle default room-based chat for all non-command messages
  * @param {Object} socket - Socket.IO socket object
- * @param {string} message - The chat command message
+ * @param {string} chatText - The chat message text
  */
-function handleChatCommand(socket, message) {
+function handleDefaultRoomChat(socket, chatText) {
   if (!roomSystem.isLoaded) {
     socket.emit('gameMasterMessage', {
       text: 'The world is still loading. Please wait a moment.',
@@ -364,15 +351,14 @@ function handleChatCommand(socket, message) {
     return;
   }
 
-  // Extract chat message from "/chat message"
-  let chatText = '';
-  if (message.startsWith('/chat ')) {
-    chatText = message.substring(6).trim();
-  }
+  // Trim and validate chat text
+  const trimmedText = chatText ? chatText.trim() : '';
   
-  if (!chatText) {
+  // Validate chat message using existing validation
+  const validationResult = validateMessage({ text: trimmedText });
+  if (!validationResult.isValid) {
     socket.emit('gameMasterMessage', {
-      text: 'Say what? Please provide a message (e.g., "/chat Hello everyone!").',
+      text: `Cannot send message: ${validationResult.error}`,
       timestamp: new Date().toISOString()
     });
     return;
@@ -400,21 +386,11 @@ function handleChatCommand(socket, message) {
     return;
   }
 
-  // Validate chat message using existing validation
-  const validationResult = validateMessage({ text: chatText });
-  if (!validationResult.isValid) {
-    socket.emit('gameMasterMessage', {
-      text: `Cannot send message: ${validationResult.error}`,
-      timestamp: new Date().toISOString()
-    });
-    return;
-  }
-
   // Prepare chat message data
   const chatMessageData = {
     playerId: socket.id,
     playerName: playerData.name,
-    text: chatText,
+    text: trimmedText,
     timestamp: new Date().toISOString(),
     roomId: currentRoom,
     messageType: 'roomChat'
@@ -428,22 +404,23 @@ function handleChatCommand(socket, message) {
         // Send to sender with "You say:" format
         playerSocket.emit('roomChatMessage', {
           ...chatMessageData,
-          text: `You say: "${chatText}"`,
+          text: `You say: "${trimmedText}"`,
           isSelf: true
         });
       } else {
         // Send to other players with player name
         playerSocket.emit('roomChatMessage', {
           ...chatMessageData,
-          text: `${playerData.name} says: "${chatText}"`,
+          text: `${playerData.name} says: "${trimmedText}"`,
           isSelf: false
         });
       }
     }
   }
 
-  console.log(`Room chat in ${currentRoom} from ${socket.id}: ${chatText}`);
+  console.log(`Room chat in ${currentRoom} from ${socket.id}: ${trimmedText}`);
 }
+
 
 /**
  * Get opposite direction for arrival messages
