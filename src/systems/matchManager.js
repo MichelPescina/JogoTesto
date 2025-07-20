@@ -26,7 +26,7 @@ class MatchManager {
     this.maxPlayersPerMatch = 50;
     
     /** @type {number} Minimum players to start countdown */
-    this.minPlayersForCountdown = 10;
+    this.minPlayersForCountdown = 2;
   }
 
   /**
