@@ -25,3 +25,4 @@ Research more resources as you need them, specially best practices.
 Explain the reason behind your design choices inside comments in the code.
 You MUST Separate the functionality into modules ensure easy integration in the feature.
 You MUST refactor the a file into submodules if its longer than 500 lines.
+Instead of recreating functionality use already existing functions, module, classes, etc.

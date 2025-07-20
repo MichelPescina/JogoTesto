@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JogoTesto - Battle Royale Text RPG</title>
+    <title>JogoTesto - Multiplayer Text RPG</title>
     <link rel="stylesheet" href="/style.css">
     <script src="/socket.io/socket.io.js"></script>
 </head>
@@ -15,34 +15,15 @@
             <div class="status-bar">
                 <span id="connectionStatus" class="status disconnected">Disconnected</span>
                 <span id="playerCount" class="player-count">Players: 0</span>
-                <span id="matchStatus" class="match-status">In Lobby</span>
             </div>
         </header>
-
-        <!-- Match System Info Bar -->
-        <div class="match-info-bar">
-            <div class="player-info">
-                <span>Player: <span id="currentPlayerName">Anonymous</span></span>
-            </div>
-            <div class="lobby-info">
-                <span id="lobbyInfo">Lobby Status: Loading...</span>
-            </div>
-            <div class="match-info">
-                <span id="matchInfo">Not in match</span>
-            </div>
-        </div>
-
-        <!-- Countdown Display -->
-        <div id="countdownDisplay" class="countdown-display" style="display: none;">
-            Game starts in: 60s
-        </div>
 
         <!-- Game Area -->
         <main class="game-area">
             <!-- Message Display Area -->
             <div id="messages" class="messages" role="log" aria-label="Game messages">
                 <div class="system-message">
-                    Welcome to JogoTesto Battle Royale! Connecting to server...
+                    Welcome to JogoTesto! Connect and start chatting with other players.
                 </div>
             </div>
 
@@ -71,49 +52,19 @@
                     <span id="characterCount" class="character-count">0/500</span>
                     <span class="help-text">Press Enter to send</span>
                 </div>
-                <div class="command-help">
-                    <span class="help-text">
-                        Lobby: Chat normally | Match: Use /go [direction], /look for game commands
-                    </span>
-                </div>
             </div>
         </main>
 
         <!-- Footer -->
         <footer class="footer">
             <div class="game-info">
-                <p>Battle Royale text-based multiplayer RPG | Built with Socket.IO</p>
+                <p>Text-based multiplayer RPG engine built with Socket.IO</p>
                 <div id="debugInfo" class="debug-info" style="display: none;">
                     <span>Player ID: <span id="playerId">N/A</span></span>
                     <span>Ping: <span id="ping">N/A</span>ms</span>
                 </div>
             </div>
         </footer>
-    </div>
-
-    <!-- Player Name Modal -->
-    <div id="nameModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <h3>Enter Your Player Name</h3>
-            <p>Choose a unique name to join or create a match (2-50 characters):</p>
-            <input 
-                type="text" 
-                id="nameInput" 
-                class="name-input"
-                placeholder="Your player name"
-                maxlength="50"
-                autocomplete="off"
-            >
-            <div class="modal-buttons">
-                <button id="joinMatchButton" class="modal-button primary">Join Match</button>
-                <button id="closeNameModal" class="modal-button">Cancel</button>
-            </div>
-            <div class="name-help">
-                <p class="help-text">
-                    Names can contain letters, numbers, spaces, hyphens, and underscores only.
-                </p>
-            </div>
-        </div>
     </div>
 
     <!-- Error Modal -->
