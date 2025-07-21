@@ -51,7 +51,10 @@ Para realizar este proceso necesitarás tener node.js instalado.
 
 ## Experimentos
 
-En esta sección se detallan los diferentes experimentos que realice para encontrar una metodología para desarrollar con Agentes de IA en un proyecto greenfield (que inicia desde cero).
+En esta sección se detallan los diferentes experimentos que realice para encontrar una metodología para desarrollar con Agentes de IA en un proyecto greenfield (que inicia desde cero). Cada rama (branch) corresponde a un experimento, cambia entre llas con git para probar diferentes experimentos.
+
+**TODO**
+Para mejorar los experimentos proponer hipótesis de las causas de las observaciones que tuve y hacer experimentos para evaluar si es verdad.
 
 ### Experimento 1: desarrollo por Agente de inicio a fin.
 
@@ -73,13 +76,13 @@ En esta sección se detalla el primer experimento donde intenté desarrollar de 
 - Los tests, la validación y la correción son esenciales para que el Agente dé buenos resultados, ya que a través de este proceso iterativo es cómo limpia y mejora el código.
 - Los testeos manuales son imposibles para el agente simplemente porque no tiene esa función implementada.
 - Como programador se pierden oportunidades para desarrollar las habilidades de investigación, planeación y diseño del sistema a bajo nivel, resolución de problemas, entre otras.
-- Curiosamente este tipo de desarrollo te obliga a desarrallar la habilidad de planeación y diseño de sistemas a alto nivel ya que SI tienes que pensar sobre como se va a implementar para describir una feature de manera apropiada.
-- El agente logra programar una UI bonita pero tiende a equivocarse en como debe ser el flujo de pantallas.
+- Curiosamente este tipo de desarrollo te obliga a desarrollar la habilidad de planeación y diseño de sistemas a alto nivel ya que SI tienes que pensar sobre como se va a implementar para describir una feature de manera apropiada.
+- El agente logra programar una UI bonita y funcional pero tiende a equivocarse en como debe ser el flujo de pantallas.
 
 **Resultados**
 
 - El agente logró desarrollar la aplicación hasta el punto de implemntar un chat de salas y un sistema de matchmaking que parece funcionar pero no inicia las partidas. Decidí no seguir porque solo se acumularía error sobre error.
-- No le pude seguir el ritmo por lo que no entiendo el sistema que creó y debido a ello no puedo corregir los errores que haya tenido a menos de que lo estudie a profundidad.
+- No le pude seguir el ritmo, esto causó que no entendiera el sistema que construyó y debido a ello yo no puedo corregir los errores que haya tenido a menos de que lo estudie a profundidad.
 
 **Posibles mejoras**
 
@@ -89,7 +92,7 @@ Conociendo mi forma de trabajar algunas posibles mejoras son:
 - Desarrollo por módulos o componentes, el Agente desarrolla un módulo y luego yo lo integro al sistema en general.
 	- Será necesario tener bien definido la comunicación entre componentes.
 - Para aminorar el problema de la gran cantidad de código, aparte del desarrollo modular, puede ser útil crear un comando que me explique partes del código, busque en que lugares se utiliza y cuál es su función y razón de existir en relación a todo el sistema.
-- Antes de añadir más cosas al sistema lo tengo que estudiar y entender primero.
+- Antes de añadir más cosas al sistema lo tengo que estudiar, entender primero y verificar que no tiene bugs.
 - Planear y diseñar el sistema a mucho mayor nivel de detalle desde antes, para saber dónde va a ir cada componente, como va a interactuar y comunicar con el resto del sistema, así como que escenarios se tienen que probar.
 - La ingeniería de software es clave.
 
@@ -97,3 +100,4 @@ Conociendo mi forma de trabajar algunas posibles mejoras son:
 
 - **[AI Engineering Resources for Claude Code](https://www.markdownguide.org/basic-syntax/)** por Wisram.
 - **[Context Engineering Template](https://github.com/coleam00/context-engineering-intro)** por Cole Medin.
+- **[The New Skill in AI is Not Prompting, It's Context Engineering](https://www.philschmid.de/context-engineering)** por Philipp Schmid
