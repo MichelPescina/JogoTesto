@@ -22,7 +22,7 @@ class Player {
     this.status = PLAYER_STATUS.ALIVE;
 
     // Action tracking
-    this.lastAction = Date.now();
+    this.lastAction = 0; // Allow first action immediately
     this.searchStartTime = null;
     this.isSearching = false;
 
@@ -58,10 +58,6 @@ class Player {
    * @param {string} roomId - Target room ID
    */
   moveToRoom(roomId) {
-    if (!this.canAct()) {
-      throw new Error('Player cannot move right now');
-    }
-
     this.room = roomId;
     this.updateLastAction();
   }

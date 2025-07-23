@@ -22,6 +22,7 @@ class MatchManager {
     this.currentMatch = {
       id: this.generateMatchId(),
       status: MATCH_STATUS.WAITING,
+      //// MEJORA: USAR UN SISTEMA BASADO EN SESIONES, SOCKET.ID ES VOLATIL
       players: new Map(), // socketId -> Player
       startTime: null,
       endTime: null,
@@ -39,6 +40,7 @@ class MatchManager {
    * @returns {string} Match ID
    */
   generateMatchId() {
+    //// MEJORA: USAR UUIDs de node:crypto
     return `match_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
@@ -108,6 +110,7 @@ class MatchManager {
 
       // Check if we can start the match
       const shouldStart = this.currentMatch.players.size >= this.currentMatch.minPlayersToStart;
+      //// MEJORA: AÑADIR CODIGO PARA QUE UNA VEZ SE OBTENGA EL MINIMO DE JUGADORES COMIENCE CUENTA REGRESIVA
 
       return {
         success: true,
@@ -258,6 +261,7 @@ class MatchManager {
       maxPlayers: this.currentMatch.maxPlayers,
       minPlayersToStart: this.currentMatch.minPlayersToStart,
       startTime: this.currentMatch.startTime,
+      endTime: this.currentMatch.endTime,
       winner: this.currentMatch.winner ? this.currentMatch.winner.name : null,
       gameState: this.gameEngine ? this.gameEngine.getGameState() : null
     };

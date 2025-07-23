@@ -95,6 +95,7 @@ const SOCKET_EVENTS = {
   MATCH_STARTED: 'matchStarted',
   MATCH_ENDED: 'matchEnded',
   ROOM_UPDATE: 'roomUpdate',
+  ROOM_INFO: 'roomInfo',
   PLAYER_ENTERED: 'playerEntered',
   PLAYER_LEFT: 'playerLeft',
   COMBAT_INITIATED: 'combatInitiated',

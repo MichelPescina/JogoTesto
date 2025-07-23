@@ -362,6 +362,13 @@ function initializeHandlers(socket, io, matchManager) {
       });
     }
   });
+
+  /**
+   * Handle room information request from player.
+   */
+  socket.on(SOCKET_EVENTS.ROOM_INFO, async (data) => {
+    
+  })
 }
 
 /**
