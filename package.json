@@ -2,14 +2,23 @@
   "name": "jogotesto",
   "version": "1.0.0",
   "main": "src/server.js",
+  "type": "commonjs",
   "scripts": {
     "start": "node src/server.js",
-    "test": "node --test",
-    "lint": "eslint"
+    "dev": "node --watch src/server.js",
+    "test": "node --test tests/**/*.test.js",
+    "test:unit": "node --test tests/game/*.test.js",
+    "test:integration": "node --test tests/integration/*.test.js",
+    "lint": "eslint src/ tests/ --ext .js",
+    "lint:fix": "eslint src/ tests/ --ext .js --fix",
+    "validate": "npm run lint && npm run test",
+    "clean": "rm -rf node_modules package-lock.json",
+    "reset": "npm run clean && npm install"
   },
-  "author": "",
+  "author": "JogoTesto Development Team",
   "license": "MIT",
-  "description": "",
+  "description": "A real-time multiplayer text-based battle royale game built with Node.js, Express.js, and Socket.io",
+  "keywords": ["game", "multiplayer", "battle-royale", "socket.io", "nodejs", "terminal", "text-based"],
   "devDependencies": {
     "dotenv": "^17.2.0",
     "eslint": "^9.31.0",

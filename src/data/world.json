@@ -1,0 +1,196 @@
+{
+  "spawn": {
+    "id": "spawn",
+    "name": "The Spawn Clearing",
+    "description": "A peaceful meadow where warriors begin their journey. The grass is trampled from countless battles. To the north lies a village, east leads to a dense forest, and west opens to rocky plains.",
+    "exits": {
+      "north": "village",
+      "east": "forest_entrance",
+      "west": "rocky_plains"
+    },
+    "weaponSpawnChance": 0.05
+  },
+  "village": {
+    "id": "village",
+    "name": "Abandoned Village",
+    "description": "Empty houses line a dirt road, their windows dark and doors ajar. Shadows move between buildings. The spawn clearing lies south, ruins stretch east, and a bridge crosses north to mountain paths.",
+    "exits": {
+      "south": "spawn",
+      "east": "ruins",
+      "north": "mountain_bridge"
+    },
+    "weaponSpawnChance": 0.15
+  },
+  "forest_entrance": {
+    "id": "forest_entrance",
+    "name": "Forest Entrance",
+    "description": "Tall pines create a natural archway. Sunlight filters through thick branches above. The clearing lies west, deeper forest extends north, and a river flows east.",
+    "exits": {
+      "west": "spawn",
+      "north": "deep_forest",
+      "east": "river_crossing"
+    },
+    "weaponSpawnChance": 0.1
+  },
+  "rocky_plains": {
+    "id": "rocky_plains",
+    "name": "Rocky Plains",
+    "description": "Jagged stones jut from barren earth. Wind howls across the desolate landscape. The spawn clearing lies east, caves tunnel north, and canyons stretch south.",
+    "exits": {
+      "east": "spawn",
+      "north": "cave_entrance",
+      "south": "canyon"
+    },
+    "weaponSpawnChance": 0.12
+  },
+  "ruins": {
+    "id": "ruins",
+    "name": "Ancient Ruins",
+    "description": "Crumbling stone structures hint at a forgotten civilization. Vines snake through broken walls. The village lies west, a temple stands north, and forest paths lead south.",
+    "exits": {
+      "west": "village",
+      "north": "temple",
+      "south": "forest_path"
+    },
+    "weaponSpawnChance": 0.2
+  },
+  "mountain_bridge": {
+    "id": "mountain_bridge",
+    "name": "Mountain Bridge",
+    "description": "A narrow stone bridge spans a deep chasm. Mountain peaks tower on both sides. The village lies south, dangerous peaks stretch north, and eastern paths lead to a temple.",
+    "exits": {
+      "south": "village",
+      "north": "mountain_peak",
+      "east": "temple"
+    },
+    "weaponSpawnChance": 0.08
+  },
+  "deep_forest": {
+    "id": "deep_forest",
+    "name": "Deep Forest",
+    "description": "Ancient trees tower overhead, blocking most sunlight. Strange sounds echo in the darkness. Forest entrance lies south, a hidden grove waits east, and thick undergrowth blocks other paths.",
+    "exits": {
+      "south": "forest_entrance",
+      "east": "hidden_grove"
+    },
+    "weaponSpawnChance": 0.18
+  },
+  "river_crossing": {
+    "id": "river_crossing",
+    "name": "River Crossing",
+    "description": "A rushing river blocks further passage. Stepping stones provide treacherous footing. Forest entrance lies west, a waterfall crashes north, and forest paths continue south.",
+    "exits": {
+      "west": "forest_entrance",
+      "north": "waterfall",
+      "south": "forest_path"
+    },
+    "weaponSpawnChance": 0.1
+  },
+  "cave_entrance": {
+    "id": "cave_entrance",
+    "name": "Cave Entrance",
+    "description": "A dark opening yawns in the mountainside. Cool air flows from within. Rocky plains lie south, the cave depths extend north, and mountain paths wind east.",
+    "exits": {
+      "south": "rocky_plains",
+      "north": "cave_depths",
+      "east": "mountain_path"
+    },
+    "weaponSpawnChance": 0.14
+  },
+  "canyon": {
+    "id": "canyon",
+    "name": "Narrow Canyon",
+    "description": "High walls of red rock create a natural corridor. Echoes bounce off stone surfaces. Rocky plains lie north, the canyon deepens west, and a mountain path climbs east.",
+    "exits": {
+      "north": "rocky_plains",
+      "west": "canyon_depths",
+      "east": "mountain_path"
+    },
+    "weaponSpawnChance": 0.11
+  },
+  "temple": {
+    "id": "temple",
+    "name": "Sacred Temple",
+    "description": "Marble columns support a domed roof. Ancient symbols cover every surface. This sacred place connects ruins to the south, mountain bridge to the west, and a hidden grove to the east.",
+    "exits": {
+      "south": "ruins",
+      "west": "mountain_bridge",
+      "east": "hidden_grove"
+    },
+    "weaponSpawnChance": 0.25
+  },
+  "forest_path": {
+    "id": "forest_path",
+    "name": "Winding Forest Path",
+    "description": "A well-worn trail winds through mixed woodland. Leaves crunch underfoot with each step. The path connects ruins to the north, river crossing to the north-east, and leads to a waterfall east.",
+    "exits": {
+      "north": "ruins",
+      "northeast": "river_crossing",
+      "east": "waterfall"
+    },
+    "weaponSpawnChance": 0.09
+  },
+  "mountain_peak": {
+    "id": "mountain_peak",
+    "name": "Mountain Peak",
+    "description": "The highest point offers a commanding view of all below. Cold wind cuts through thin air. Only the mountain bridge provides access south, making this a dangerous dead end.",
+    "exits": {
+      "south": "mountain_bridge"
+    },
+    "weaponSpawnChance": 0.3
+  },
+  "hidden_grove": {
+    "id": "hidden_grove",
+    "name": "Hidden Grove",
+    "description": "A circular clearing surrounded by towering oaks. Sunlight streams through leaves, creating dancing shadows. Paths lead to deep forest west, temple west-southwest, and waterfall south.",
+    "exits": {
+      "west": "deep_forest",
+      "southwest": "temple",
+      "south": "waterfall"
+    },
+    "weaponSpawnChance": 0.22
+  },
+  "waterfall": {
+    "id": "waterfall",
+    "name": "Thundering Waterfall",
+    "description": "Water cascades from great heights, creating a misty spray. The sound is deafening. Paths connect to river crossing north, hidden grove north, forest path west, and cave depths southwest.",
+    "exits": {
+      "north": "river_crossing",
+      "northwest": "hidden_grove",
+      "west": "forest_path",
+      "southwest": "cave_depths"
+    },
+    "weaponSpawnChance": 0.16
+  },
+  "cave_depths": {
+    "id": "cave_depths",
+    "name": "Cave Depths",
+    "description": "Darkness engulfs this underground chamber. Water drips constantly from stalactites above. The cave entrance lies south, canyon depths east, and waterfall northeast.",
+    "exits": {
+      "south": "cave_entrance",
+      "east": "canyon_depths",
+      "northeast": "waterfall"
+    },
+    "weaponSpawnChance": 0.2
+  },
+  "mountain_path": {
+    "id": "mountain_path",
+    "name": "Treacherous Mountain Path",
+    "description": "A narrow ledge hugs the mountainside. One wrong step means certain death. The path connects cave entrance west, canyon east, making it a crucial bottleneck.",
+    "exits": {
+      "west": "cave_entrance",
+      "east": "canyon"
+    },
+    "weaponSpawnChance": 0.17
+  },
+  "canyon_depths": {
+    "id": "canyon_depths",
+    "name": "Canyon Depths",
+    "description": "The deepest part of the canyon system where walls tower impossibly high. Strange echoes suggest hidden chambers. Canyon entrance lies east, cave depths west.",
+    "exits": {
+      "east": "canyon",
+      "west": "cave_depths"
+    },
+    "weaponSpawnChance": 0.19
+  }
+}

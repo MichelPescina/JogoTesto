@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JogoTesto - Text-Based Battle Royale</title>
+    <link rel="stylesheet" href="/css/terminal.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="container">
+        <!-- Header -->
+        <header id="header">
+            <div class="header-line">
+                <span class="prompt">jogotesto@battleserver:~$</span>
+                <span class="title">JogoTesto Battle Royale Terminal</span>
+            </div>
+            <div class="header-info">
+                <span id="connection-status">Disconnected</span>
+                <span id="player-count">0/20 players</span>
+            </div>
+        </header>
+
+        <!-- Join Screen -->
+        <div id="join-screen" class="screen active">
+            <div class="terminal-content">
+                <pre class="ascii-art">
+     ╦╔═╗╔═╗╔═╗╔╦╗╔═╗╔═╗╔╦╗╔═╗
+     ║║ ║║ ╦║ ║ ║ ║╣ ╚═╗ ║ ║ ║
+    ╚╝╚═╝╚═╝╚═╝ ╩ ╚═╝╚═╝ ╩ ╚═╝
+    
+    Text-Based Battle Royale
+                </pre>
+                
+                <div class="info-section">
+                    <h3>Game Rules:</h3>
+                    <ul>
+                        <li>Last player standing wins</li>
+                        <li>Move with WASD keys</li>
+                        <li>Search rooms for weapons (makes you vulnerable)</li>
+                        <li>Attack others or escape from combat</li>
+                        <li>Gain strength with each victory</li>
+                    </ul>
+                </div>
+
+                <div class="join-form">
+                    <label for="player-name">Enter your warrior name:</label>
+                    <input type="text" id="player-name" maxlength="20" placeholder="Your name here..." autofocus>
+                    <button id="join-button">Enter Battle</button>
+                    <div id="join-error" class="error hidden"></div>
+                </div>
+
+                <div class="server-info">
+                    <div id="server-status">Connecting to server...</div>
+                    <div id="match-info">Loading match information...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen">
+            <!-- Player Status Bar -->
+            <div id="status-bar">
+                <div class="status-group">
+                    <span class="status-label">Player:</span>
+                    <span id="player-name-display">Unknown</span>
+                </div>
+                <div class="status-group">
+                    <span class="status-label">Strength:</span>
+                    <span id="player-strength">1</span>
+                </div>
+                <div class="status-group">
+                    <span class="status-label">Weapon:</span>
+                    <span id="player-weapon">None</span>
+                </div>
+                <div class="status-group">
+                    <span class="status-label">Kills:</span>
+                    <span id="player-kills">0</span>
+                </div>
+                <div class="status-group">
+                    <span class="status-label">Players Left:</span>
+                    <span id="players-remaining">0</span>
+                </div>
+            </div>
+
+            <!-- Game Area -->
+            <div id="game-area">
+                <div id="room-display">
+                    <h3 id="room-name">Room Name</h3>
+                    <p id="room-description">Room description will appear here.</p>
+                    <div id="room-players"></div>
+                </div>
+
+                <div id="message-log">
+                    <div class="log-header">Game Messages:</div>
+                    <div id="message-list"></div>
+                </div>
+            </div>
+
+            <!-- Controls Info -->
+            <div id="controls-info">
+                <div class="controls-section">
+                    <strong>Movement:</strong> W(North) A(West) S(South) D(East)
+                </div>
+                <div class="controls-section">
+                    <strong>Actions:</strong> SPACE(Search) ENTER(Confirm) ESC(Cancel)
+                </div>
+            </div>
+
+            <!-- Combat Modal -->
+            <div id="combat-modal" class="modal hidden">
+                <div class="modal-content">
+                    <h3 id="combat-title">Combat!</h3>
+                    <div id="combat-info"></div>
+                    <div class="combat-actions">
+                        <button id="attack-button" class="action-button">Attack (A)</button>
+                        <button id="escape-button" class="action-button">Escape (E)</button>
+                    </div>
+                    <div id="combat-timer"></div>
+                </div>
+            </div>
+
+            <!-- Search Modal -->
+            <div id="search-modal" class="modal hidden">
+                <div class="modal-content">
+                    <h3>Searching for weapons...</h3>
+                    <div class="search-progress">
+                        <div id="search-bar"></div>
+                    </div>
+                    <p>You are vulnerable while searching!</p>
+                    <div id="search-timer"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="game-over-screen" class="screen">
+            <div class="terminal-content">
+                <div id="game-result">
+                    <h2 id="result-title">Game Over</h2>
+                    <div id="result-message"></div>
+                    <div id="final-stats"></div>
+                </div>
+                
+                <div class="game-over-actions">
+                    <button id="play-again-button">Play Again</button>
+                    <button id="view-stats-button">View Match History</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Socket.io Client -->
+    <script src="/socket.io/socket.io.js"></script>
+    <!-- Game Client -->
+    <script src="/js/client.js"></script>
+</body>
+</html>
