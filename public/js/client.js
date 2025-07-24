@@ -518,6 +518,8 @@ class GameClient {
   requestRoomUpdate() {
     // The server should send room updates automatically
     // This is a placeholder for requesting updates if needed
+    if (!this.socket) return;
+    this.socket.emit('roomInfo', {});
   }
 
   /**

@@ -367,8 +367,39 @@ function initializeHandlers(socket, io, matchManager) {
    * Handle room information request from player.
    */
   socket.on(SOCKET_EVENTS.ROOM_INFO, async (data) => {
-    
-  })
+    try {
+      const player = matchManager.getPlayerBySocket(socket.id);
+      if (!player) {
+        return socket.emit(SOCKET_EVENTS.ERROR, {
+          message: 'Player not found',
+          code: 'PLAYER_NOT_FOUND'
+        });
+      }
+
+      const room = matchManager.gameEngine.getRoom(player.room);
+      if (!room) {
+        return socket.emit(SOCKET_EVENTS.ERROR, {
+          message: 'Room not found',
+          code: 'ROOM_NOT_FOUND'
+        });
+      }
+
+      const playersInRoom = room.getPlayers().filter(pid => pid !== player.id);
+
+      socket.emit(SOCKET_EVENTS.ROOM_UPDATE, {
+        room: room.toClientData(true),
+        playersInRoom: playersInRoom,
+        description: room.getFullDescription()
+      });
+
+    } catch (error) {
+      console.error('Error handling roomInfo:', error);
+      socket.emit(SOCKET_EVENTS.ERROR, {
+        message: 'Failed to get room info',
+        code: 'INTERNAL_ERROR'
+      });
+    }
+  });
 }
 
 /**

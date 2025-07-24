@@ -43,7 +43,6 @@ class GameEngine {
 
     // Add player to spawn room
     const spawnRoom = this.rooms.get('spawn');
-    //// QUÉ PASA SI NO HAY SPAWN ROOM?
     if (spawnRoom) {
       spawnRoom.addPlayer(player.id);
     }
