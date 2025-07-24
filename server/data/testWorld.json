@@ -1,0 +1,54 @@
+{
+    "spawn": {
+        "name": "Area del spawn",
+        "description": "Estas en el area de spawn, hay cuatro caminos.",
+        "weaponSpawnChance": 0.2,
+        "exits": {
+            "north": "forest",
+            "south":  "village",
+            "east": "river",
+            "west": "mountain"
+        }
+    },
+    "forest": {
+        "name": "Bosque de los perdidos",
+        "description": "Te encuentras en medio del bosquem la oscuridad te consume.",
+        "weaponSpawnChance": 0.1,
+        "exits": {
+            "north": "forest_clearing",
+            "south":  "spawn"
+        }
+    },
+    "forest_clearing": {
+        "name": "Claro de la esperanza",
+        "description": "Un pequeño claro de luz en el bosque rodeado de oscuridad",
+        "weaponSpawnChance": 0.9,
+        "exits": {
+            "south":  "forest"
+        }
+    },
+    "village": {
+        "name": "Villa arrasada",
+        "description": "No queda nadie en esta villa, fue abandonada hace mucho tiempo.",
+        "weaponSpawnChance": 0.2,
+        "exits": {
+            "north": "spawn"
+        }
+    },
+    "river": {
+        "name": "Rio",
+        "description": "Las aguas del rio son profundas y lleva fuerza, no puedes pasar.",
+        "weaponSpawnChance": 0.2,
+        "exits": {
+            "west": "spawn"
+        }
+    },
+    "mountain": {
+        "name": "Montaña",
+        "description": "Una montaña, nada que ver aquí.",
+        "weaponSpawnChance": 0.9,
+        "exits": {
+            "east": "spawn"
+        }
+    }
+}
