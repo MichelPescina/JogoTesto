@@ -1,6 +1,7 @@
 ## FEATURE:
 
-[Insert your feature here]
+Please help me fix these bugs. Right now the way the client handles errors is through the function `handleError`
+(the client is located at `public/js/client.js`)
 
 ## EXAMPLES:
 

@@ -11,7 +11,7 @@ class GameClient {
     this.isSearching = false;
     this.inCombat = false;
     this.messageBuffer = [];
-    
+
     this.init();
   }
 
@@ -80,10 +80,10 @@ class GameClient {
     // Join game
     const joinButton = document.getElementById('join-button');
     const playerNameInput = document.getElementById('player-name');
-    
+
     joinButton.addEventListener('click', () => this.joinGame());
     playerNameInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') this.joinGame();
+      if (e.key === 'Enter') {this.joinGame();}
     });
 
     // Game controls
@@ -102,8 +102,8 @@ class GameClient {
    * Handle keyboard input
    */
   handleKeyPress(event) {
-    if (this.gameState !== 'playing') return;
-    
+    if (this.gameState !== 'playing') {return;}
+
     // Prevent default browser shortcuts
     if (['w', 'a', 's', 'd', ' ', 'Enter', 'Escape'].includes(event.key)) {
       event.preventDefault();
@@ -127,25 +127,25 @@ class GameClient {
 
     // Action keys
     switch (event.key) {
-      case ' ': // Space - Search
-        if (!this.isSearching && !this.inCombat) {
-          this.searchForWeapon();
-        }
-        break;
-      case 'Escape':
-        this.hideModals();
-        break;
+    case ' ': // Space - Search
+      if (!this.isSearching && !this.inCombat) {
+        this.searchForWeapon();
+      }
+      break;
+    case 'Escape':
+      this.hideModals();
+      break;
     }
 
     // Combat response keys
     if (this.inCombat) {
       switch (event.key.toLowerCase()) {
-        case 'a':
-          this.respondToCombat('attack');
-          break;
-        case 'e':
-          this.respondToCombat('escape');
-          break;
+      case 'a':
+        this.respondToCombat('attack');
+        break;
+      case 'e':
+        this.respondToCombat('escape');
+        break;
       }
     }
   }
@@ -155,7 +155,7 @@ class GameClient {
    */
   joinGame() {
     const playerName = document.getElementById('player-name').value.trim();
-    
+
     if (!playerName) {
       this.showJoinError('Please enter your name');
       return;
@@ -186,19 +186,27 @@ class GameClient {
    */
   searchForWeapon() {
     this.socket.emit('search', {});
+    
+    // Add defensive timeout in case server never responds
+    this.searchBackupTimeout = setTimeout(() => {
+      if (this.isSearching) {  // Only if still searching (server didn't respond)
+        console.warn('Server search response timeout - forcing cleanup');
+        this.handleSearchCompleted({ success: false, weaponFound: false, weapon: null });
+      }
+    }, 3000);  // 3 second timeout (2s search duration + 1s buffer)
   }
 
   /**
    * Respond to combat
    */
   respondToCombat(response) {
-    if (!this.inCombat) return;
-    
+    if (!this.inCombat) {return;}
+
     this.socket.emit('combatResponse', {
       response: response,
       attackerId: this.combatData?.attacker?.id
     });
-    
+
     this.hideModal('combat-modal');
     this.inCombat = false;
   }
@@ -211,11 +219,11 @@ class GameClient {
     this.playerData = data.player;
     this.currentRoom = data.room;
     this.gameState = 'waiting';
-    
+
     this.showScreen('game-screen');
     this.updatePlayerStatus();
     this.addMessage(`Welcome ${data.player.name}! Waiting for more players...`, 'system');
-    
+
     if (data.match.playerCount < data.match.minPlayersToStart) {
       const needed = data.match.minPlayersToStart - data.match.playerCount;
       this.addMessage(`Need ${needed} more players to start`, 'system');
@@ -227,7 +235,7 @@ class GameClient {
     this.gameState = 'playing';
     this.addMessage('The battle begins! Find weapons and survive!', 'system');
     this.addMessage('Use WASD to move, SPACE to search for weapons', 'system');
-    
+
     // Request initial room data
     this.requestRoomUpdate();
   }
@@ -235,7 +243,7 @@ class GameClient {
   handleMatchEnded(data) {
     console.log('Match ended:', data);
     this.gameState = 'game-over';
-    
+
     const isWinner = data.winner && data.winner.id === this.playerData?.id;
     this.showGameOver(isWinner, data);
   }
@@ -265,9 +273,13 @@ class GameClient {
 
   handleSearchCompleted(data) {
     console.log('Search completed:', data);
+
+    // Clear backup timeout
+    clearTimeout(this.searchBackupTimeout);
+    
     this.isSearching = false;
     this.hideModal('search-modal');
-    
+
     if (data.weaponFound) {
       this.playerData.weapon = data.weapon;
       this.updatePlayerStatus();
@@ -292,7 +304,7 @@ class GameClient {
     console.log('Combat result:', data);
     this.inCombat = false;
     this.hideModal('combat-modal');
-    
+
     if (data.result === 'victory') {
       this.playerData.strength = data.newStats.strength;
       this.playerData.kills = data.newStats.kills;
@@ -306,7 +318,7 @@ class GameClient {
 
   handleError(data) {
     console.error('Server error:', data);
-    
+
     if (data.code === 'MATCH_FULL') {
       this.showJoinError('Match is full. Please wait for the next match.');
     } else if (data.code === 'MATCH_STARTED') {
@@ -314,7 +326,7 @@ class GameClient {
     } else {
       this.showError(data.message);
     }
-    
+
     // Reset join button
     document.getElementById('join-button').disabled = false;
     document.getElementById('join-button').textContent = 'Enter Battle';
@@ -337,8 +349,8 @@ class GameClient {
   }
 
   updatePlayerStatus() {
-    if (!this.playerData) return;
-    
+    if (!this.playerData) {return;}
+
     document.getElementById('player-name-display').textContent = this.playerData.name;
     document.getElementById('player-strength').textContent = this.playerData.strength;
     document.getElementById('player-weapon').textContent = this.playerData.weapon ? this.playerData.weapon.name : 'None';
@@ -348,17 +360,17 @@ class GameClient {
   updateRoomDisplay(data) {
     document.getElementById('room-name').textContent = data.room.name;
     document.getElementById('room-description').textContent = data.description;
-    
+
     const playersContainer = document.getElementById('room-players');
     playersContainer.innerHTML = '';
-    
+
     if (data.playersInRoom && data.playersInRoom.length > 0) {
       const playersTitle = document.createElement('div');
       playersTitle.textContent = 'Other players here:';
       playersTitle.style.fontWeight = 'bold';
       playersTitle.style.marginBottom = '10px';
       playersContainer.appendChild(playersTitle);
-      
+
       data.playersInRoom.forEach(playerId => {
         const playerElement = document.createElement('div');
         playerElement.className = 'player-item';
@@ -375,16 +387,16 @@ class GameClient {
     const messageList = document.getElementById('message-list');
     const messageElement = document.createElement('div');
     messageElement.className = `message ${type}`;
-    
+
     const timestamp = new Date().toLocaleTimeString();
     messageElement.innerHTML = `
       <span class="timestamp">[${timestamp}]</span>
       ${text}
     `;
-    
+
     messageList.appendChild(messageElement);
     messageList.scrollTop = messageList.scrollHeight;
-    
+
     // Keep only last 100 messages
     while (messageList.children.length > 100) {
       messageList.removeChild(messageList.firstChild);
@@ -414,44 +426,49 @@ class GameClient {
 
   showSearchModal(duration) {
     this.showModal('search-modal');
-    
+
     const searchBar = document.getElementById('search-bar');
     const timer = document.getElementById('search-timer');
-    
+
     let elapsed = 0;
     const interval = setInterval(() => {
       elapsed += 100;
       const progress = (elapsed / duration) * 100;
       searchBar.style.width = progress + '%';
       timer.textContent = `${((duration - elapsed) / 1000).toFixed(1)}s remaining`;
-      
+
       if (elapsed >= duration) {
         clearInterval(interval);
-        this.hideModal('search-modal');
+        
+        // Fix: Add proper cleanup (mirror handleSearchCompleted pattern)
         this.isSearching = false;
+        this.hideModal('search-modal');
+        
+        // Add fallback message since server should have responded
+        this.addMessage("Search completed (no weapon found)", 'game-message');
       }
     }, 100);
   }
 
   showCombatModal(data) {
     this.showModal('combat-modal');
-    
+
     document.getElementById('combat-title').textContent = 'Combat!';
     document.getElementById('combat-info').innerHTML = `
       <p><strong>${data.attacker.name}</strong> wants to attack you!</p>
       <p>Your strength: ${this.playerData.strength} + weapon: ${this.playerData.weapon?.damage || 0}</p>
       <p>Their strength: ${data.attackerStats.strength} + weapon: ${data.attackerStats.weapon !== 'None' ? '?' : 0}</p>
     `;
-    
+
     // 10 second timer
     let timeLeft = 10;
     const timer = document.getElementById('combat-timer');
     timer.textContent = `Time left: ${timeLeft}s`;
-    
+
     const timerInterval = setInterval(() => {
       timeLeft--;
       timer.textContent = `Time left: ${timeLeft}s`;
-      
+
       if (timeLeft <= 0) {
         clearInterval(timerInterval);
         this.respondToCombat('escape'); // Default to escape
@@ -461,11 +478,11 @@ class GameClient {
 
   showGameOver(isWinner, data) {
     this.showScreen('game-over-screen');
-    
+
     const resultTitle = document.getElementById('result-title');
     const resultMessage = document.getElementById('result-message');
     const finalStats = document.getElementById('final-stats');
-    
+
     if (isWinner) {
       resultTitle.textContent = 'VICTORY!';
       resultTitle.className = 'victory';
@@ -475,7 +492,7 @@ class GameClient {
       resultTitle.className = 'defeat';
       resultMessage.textContent = data.winner ? `${data.winner.name} won the battle` : 'The battle is over';
     }
-    
+
     if (this.playerData) {
       finalStats.innerHTML = `
         <h4>Your Final Stats:</h4>
@@ -504,7 +521,7 @@ class GameClient {
    * Game Actions
    */
   initiateAttack(targetPlayerId) {
-    if (this.inCombat || this.isSearching) return;
+    if (this.inCombat || this.isSearching) {return;}
     this.socket.emit('attack', { targetPlayerId });
   }
 
@@ -520,7 +537,7 @@ class GameClient {
   requestRoomUpdate() {
     // The server should send room updates automatically
     // This is a placeholder for requesting updates if needed
-    if (!this.socket) return;
+    if (!this.socket) {return;}
     this.socket.emit('roomInfo', {});
   }
 
@@ -531,16 +548,16 @@ class GameClient {
     try {
       const response = await fetch('/api/matches');
       const data = await response.json();
-      
-      document.getElementById('match-info').textContent = 
+
+      document.getElementById('match-info').textContent =
         `Current match: ${data.current.playerCount}/${data.current.maxPlayers} players`;
-        
-      document.getElementById('player-count').textContent = 
+
+      document.getElementById('player-count').textContent =
         `${data.current.playerCount}/${data.current.maxPlayers} players`;
-        
-      document.getElementById('server-status').textContent = 
+
+      document.getElementById('server-status').textContent =
         `Server: ${data.current.status} | Total matches: ${data.stats.totalMatches}`;
-        
+
     } catch (error) {
       console.error('Failed to load server info:', error);
       document.getElementById('server-status').textContent = 'Server info unavailable';
