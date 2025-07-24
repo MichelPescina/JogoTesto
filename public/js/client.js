@@ -427,6 +427,8 @@ class GameClient {
       
       if (elapsed >= duration) {
         clearInterval(interval);
+        this.hideModal('search-modal');
+        this.isSearching = false;
       }
     }, 100);
   }
