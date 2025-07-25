@@ -3,7 +3,7 @@ const { createServer } = require('node:http');
 const { join } = require('node:path');
 const { Server } = require('socket.io');
 
-const SessionManager = require('./server/sessionManager');
+const SessionManager = require('./server/SessionManager');
 
 const app = express();
 const server = createServer(app);

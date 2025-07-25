@@ -7,9 +7,9 @@
             "weaponSpawnProb": 1.0,
             "exits": {
                 "north": "forest",
-                "south": "village",
-                "east": "river",
-                "west": "mountain"
+                "south": "forest",
+                "east": "forest",
+                "west": "forest"
             }
         },
         "forest": {
@@ -27,30 +27,6 @@
             "weaponSpawnProb": 1.0,
             "exits": {
                 "south": "forest"
-            }
-        },
-        "village": {
-            "name": "Villa arrasada",
-            "description": "No queda nadie en esta villa, fue abandonada hace mucho tiempo.",
-            "weaponSpawnProb": 1.0,
-            "exits": {
-                "north": "spawn"
-            }
-        },
-        "river": {
-            "name": "Rio",
-            "description": "Las aguas del rio son profundas y lleva fuerza, no puedes pasar.",
-            "weaponSpawnProb": 1.0,
-            "exits": {
-                "west": "spawn"
-            }
-        },
-        "mountain": {
-            "name": "Montaña",
-            "description": "Una montaña, nada que ver aquí.",
-            "weaponSpawnProb": 1.0,
-            "exits": {
-                "east": "spawn"
             }
         }
     },

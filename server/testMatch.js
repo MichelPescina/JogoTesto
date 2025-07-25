@@ -1,4 +1,4 @@
-const { Match, MatchManager } = require('./matchManager');
+const { Match, MatchManager } = require('./MatchManager');
 
 let match = new Match();
 //console.log(match);
