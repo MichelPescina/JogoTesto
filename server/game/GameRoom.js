@@ -6,15 +6,15 @@ class GameRoom {
         this.exits = contents.exits;
         this.weaponSpawnProb = contents.weaponSpawnProb;
         this.pieces = new Set();
-        this.weapon = null;
+        this.weaponId = null;
     }
 
-    setWeapon(weaponId) {
+    setWeaponId(weaponId) {
         this.weapon = weaponId;
     }
 
-    getWeapon() {
-        return this.weapon;
+    getWeaponId() {
+        return this.weaponid;
     }
 
     addPiece (pieceId) {
@@ -35,6 +35,18 @@ class GameRoom {
 
     validateExit (direction) {
         return Object.hasOwn(this.exits, direction);
+    }
+
+    getName() {
+        return this.name;
+    }
+
+    getDescription() {
+        return this.description;
+    }
+
+    hasWeapon() {
+        return this.weapon !== false;
     }
 }
 

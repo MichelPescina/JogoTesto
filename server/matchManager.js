@@ -3,7 +3,7 @@ const { randomUUID } = require('node:crypto')
 class Match {
     constructor () {
         this.matchId = randomUUID();
-        this.players = new Set(); // A set of players
+        this.players = new Map(); // playerId -> pieceId
         this.minPlayers = 1;
         this.maxPlayers = 5;
         this.matchState = null; // A state machine to keep track of state

@@ -4,7 +4,7 @@ const { randomUUID } = require('node:crypto');
 const Piece = require('./Piece');
 const Weapon = require('./Weapon');
 const GameRoom = require('./GameRoom');
-const Battle = require('./Battle');
+const {BattleRes, Battle} = require('./Battle');
 
 /**
  * Generates random integer
@@ -16,24 +16,6 @@ function randomInt (start, end) {
     return Math.floor(Math.random() * dist) + start;
 }
 
-class GameCommand {
-    static TYPE = {
-        MOVE: "MOVE",
-        SEARCH: "SEARCH",
-        ATTACK: "ATTACK",
-        RES_ATTACK: "RES_ATTACK",
-        RES_ESCAPE: "RES_ESCAPE",
-    }
-
-    constructor (type, pieceId, target) {
-        this.type = type;
-        this.pieceId = pieceId;
-        this.target = target;
-    }
-}
-
-
-
 class GameEngine {
     constructor () {
         this.allPieces = new Map(); //pieceId -> Piece
@@ -41,7 +23,10 @@ class GameEngine {
         this.totalChances = null; // Sum of all weapon chances
         this.worldMap = new Map(); // roomId -> GameRoom
         this.spawnRoom = null; // roomId of spawn Room
-        this.escapeProb = 0.5;
+        this.battles = new Map();
+        this.escapeProb = 1.5;
+        this.killBonus = 2; // Strength added to piece per kill
+        this.remainingPieces = 0;
     }
 
     loadWorld(path) {
@@ -66,7 +51,7 @@ class GameEngine {
     spawnWeapon(roomId) {
         const room = this.worldMap.get(roomId);
         if (Math.random() < room.weaponSpawnProb) {
-            room.setWeapon(this.getRandomWeapon());
+            room.setWeaponId(this.getRandomWeapon());
             return true;
         }
         return false;
@@ -86,16 +71,19 @@ class GameEngine {
         return newWeaponId;
     }
 
-    createPiece (spawnRoomId = this.spawnRoomId) {
-        const id = randomUUID();
+    createPiece (pieceId = null, spawnRoomId = this.spawnRoomId) {
+        const id = pieceId? pieceId : randomUUID();
         const room = this.worldMap.get(spawnRoomId);
         let newPiece = new Piece(id, spawnRoomId);
         this.allPieces.set(id, newPiece);
         room.addPiece(id);
+        this.remainingPieces++;
         return id;
     }
 
     movePiece(pieceId, direction) {
+        if (this.allPieces.get(pieceId).getState() !== Piece.STATE.MOVING)
+            return false;
         let result = false;
         const origin = this.worldMap.get(this.allPieces.get(pieceId).getRoomId());
         switch (direction) {
@@ -139,96 +127,159 @@ class GameEngine {
     }
 
     /**
-     * Manages the attack event.
-     * @param {string} attackerId - Piece id of the attacker.
-     * @param {int} tripTime - Time taken for a message to go to client and come back in milliseconds.
+     * Manages the attack action and creates a new Battle instance.
+     * @param {string} attackerId - Piece id of the initiator.
      */
-    attack (attackerId) {
+    startBattle (attackerId) {
         const attacker = this.allPieces.get(attackerId);
+        if (attacker.getState() !== Piece.STATE.MOVING) return null;
         const room = this.worldMap.get(attacker.getRoomId());
-        // Change the attacker state
-        attacker.setState(Piece.STATE.BATTLING);
-        // Change all players inside a room to await a response from the user or controller.
-        for (const defenderId of room.getAllPieces()) {
-            if (defenderId != attackerId) {
-                let defender = this.allPieces.get(defenderId);
-                switch (defender.getState()) {
-                    // Usual scenario of player moving and receiving the attack message
-                    case Piece.STATE.MOVING:
-                        defender.setState(Piece.STATE.AWAITING_RES);
-                        //// Send message through Courier
-                        break;
-                    // Inmediately resolve battle and die
-                    case Piece.STATE.SEARCHING:
-                        //defender.setState(Piece.STATE.DEAD);
-                        //// Send message through Courier
-                }
-                defender.setState(Piece.STATE.AWAITING_RES);
+        // Filters all pieces not available for combat (DEAD or BATTLING)
+        // and maps the ids into the actual Objects.
+        const filter = (id, state) => this.allPieces.get(id).getState() === state;
+        let pieces = Array.from(room.getAllPieces()).filter(
+                id => filter(id, Piece.STATE.MOVING) || filter(id, Piece.STATE.SEARCHING))
+            .map(
+                id => this.allPieces.get(id)
+            );
+        // Sets the state for all involved pieces and filters out new dead pieces
+        pieces = pieces.filter(piece => {
+            let passed = true;
+            // If searching kill inmediately
+            if (piece.getState() === Piece.STATE.SEARCHING) {
+                this.#handleKill(piece.getPieceId());
+                attacker.addStrength(this.killBonus);
+                passed = false;
             }
+            else piece.setState(Piece.STATE.BATTLING);
+            return passed;
+        });
+        // Error - Only one piece remains
+        if (pieces.length < 2) {
+            attacker.setState(Piece.STATE.MOVING);
+            return null; //// Maybe a message?
         }
-
+        // Creates battle and stores it
+        let id = randomUUID();
+        let battle = new Battle(id, attackerId, pieces, this.escapeProb);
+        this.battles.set(id, battle);
+        return id;
     }
 
-    respondToAttack (defenderId, decision) {
-        const defender = this.allPieces.get(defenderId);
-        if (defender.getState() !== AWAITING_RES) {
-            //// Send error message through Courier
-            return false;
-        }
-        switch (decision) {
-            case "attack":
-                defender.setState(Piece.STATE.ATTACK_RES);
-                break;
-            case "escape":
-                defender.setState(Piece.STATE.ESCAPE_RES);
-                break;
-        }
-
+    respondToAttack (battleId, defenderId, decision) {
+        let battle = this.battles.get(battleId);
+        battle.setDecision(defenderId, decision);
     }
 
-    /**
-     * Handles combat finalization.
-     * @param {Piece} winner 
-     * @param {Piece} loser 
-     */
-    #endCombat(winner, loser) {
+    endBattle (battleId) {
+        let battleRes = this.battles.get(battleId).play();
+        let totalKilled = 0;
+        let winnerId = null;
+        battleRes.forEach(res => {
+            switch (res.result) {
+                case BattleRes.RESULT.WON:
+                    winnerId = res.pieceId;
+                    break
+                case BattleRes.RESULT.ESCAPED:
+                    this.#handleEscape(res.pieceId);
+                    break;
+                case BattleRes.RESULT.DIED:
+                    this.#handleKill(res.pieceId);
+                    totalKilled++;
+                    break;
+            }
+        })
         // Handle winner
-        winner.addStrength(this.strengthReward);
-        winner.setState(Piece.STATE.MOVING);
-        //// Add logic for winning the match????
-        //// Send message through Courier
-        // Handle loser
-        loser.setState(Piece.STATE.DEAD);
-        //// Send message through Courier
+        this.#handleWinner(winnerId, totalKilled);
+        //// CLEANUP OF DATA STRUCTURES
     }
 
-    #defenderEscaped () {
-        //// Take into account the attack difference in the future
-        return  Math.random() < this.escapeProb;
+    #handleWinner (winnerId, kills) {
+        let winner = this.allPieces.get(winnerId);
+        winner.addStrength(kills * this.killBonus);
+        winner.setState(Piece.STATE.MOVING);
+    }
+
+    #handleEscape (pieceId) {
+        let piece = this.allPieces.get(pieceId);
+        let room = this.worldMap.get(piece.getRoomId());
+        let dirs = Array.from(Object.getOwnPropertyNames(room.getExits()));
+        let dir = dirs[randomInt(0, dirs.length)]
+        piece.setState(Piece.STATE.MOVING);
+        this.movePiece(pieceId, dir);
+        //// Send message.
+    }
+
+    #handleKill (pieceId) {
+        let piece = this.allPieces.get(pieceId);
+        let room = this.worldMap.get(piece.getRoomId());
+        room.removePiece(pieceId);
+        piece.setState(Piece.STATE.DEAD);
+        this.remainingPieces--;
+        //// Check if we have a win condition
+        //// Send message.
+    }
+
+    startSearch (pieceId) {
+        let piece = this.allPieces.get(pieceId);
+        // Check if it's in an appropiate State
+        if (piece.getState() !== Piece.STATE.MOVING) return false;
+        piece.setState(Piece.STATE.SEARCHING);
+        return true;
+    }
+
+    endSearch (pieceId) {
+        let piece = this.allPieces.get(pieceId);
+        // Check if it's in an appropiate State
+        if (piece.getState() !== Piece.STATE.SEARCHING) return false;
+        let room = this.worldMap.get(piece.getRoomId());
+        piece.setState(Piece.STATE.MOVING);
+        piece.setWeapon(this.allWeapons.get(room.getWeaponId()));
+        room.setWeaponId(null);
+    }
+
+    getObservation (pieceId) {
+        let piece = this.allPieces.get(pieceId);
+        let room = this.worldMap.get(piece.getRoomId());
+        let obs = {};
+        obs.pieceId = pieceId;
+        obs.pieceAttack = piece.getStrength();
+        obs.pieceWeapon = piece.getWeapon();
+        obs.pieceState = piece.getState();
+        // Room
+        obs.roomId = piece.getRoomId();
+        obs.roomName = room.getName();
+        obs.roomDesc = room.getDescription();
+        obs.roomHidden = room.hasWeapon();
+        obs.roomPieces = Array.from(room.getAllPieces());
+        obs.roomExits = Object.entries(room.getExits()).map(([dir, roomId]) => {
+            let newExit = {}
+            newExit[dir] = this.worldMap.get(roomId).getName();
+            return newExit;
+        });
+        return obs;
     }
 }
 
 const game = new GameEngine();
 let miau = game.loadWorld('./server/data/simplerTestWorld.json');
-//console.log(miau);
-let weapons = new Map();
-for (let i=0; i < 1000; i++) {
-    let w = game.getRandomWeapon();
-    weapons.set(w, (weapons.get(w)+1) || 1);
+let id1 = game.createPiece('p1');
+let id2 = game.createPiece('p2');
+let id3 = game.createPiece('p3');
+
+//game.movePiece(id1, 'north');
+//game.movePiece(id2, 'north');
+game.startSearch(id2);
+game.endSearch(id2);
+console.log(game.allPieces.get(id2));
+//game.startSearch(id3);
+let battleId = game.startBattle(id1);
+console.log(battleId);
+if (battleId) {
+    game.respondToAttack(battleId, id2, 'ATTACK');
+    game.endBattle(battleId);
 }
-/* //Movement test
-let id1 = game.createPiece();
-let id2 = game.createPiece();
-let id3 = game.createPiece();
-console.log(weapons);
-console.log(game.worldMap.get('spawn').validateExit('north'));
-let dirs = ['north', 'south', 'east', 'west'];
-for (let i=0; i < 5; i++) {
-    let dir = dirs[Math.floor(Math.random() * dirs.length)];
-    //console.log('START ', i);
-    console.log(game.worldMap.get(game.allPieces.get(id1).getRoomId()).id, dir);
-    let res = game.movePiece(id1, dir);
-    //console.log(`END ${i} res = ${res}`);
-    //console.log(game.worldMap.get(game.allPieces.get(id1).getRoomId()).id);
-}
-*/
+
+console.log(game.getObservation(id1));
+console.log(game.getObservation(id2));
+console.log(game.getObservation(id3));

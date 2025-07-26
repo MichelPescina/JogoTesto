@@ -45,6 +45,14 @@ class Piece {
     getDamage() {
         return this.strength + (this.weapon? this.weapon.getAttack(): 0);
     }
+
+    getWeapon() {
+        return this.weapon;
+    }
+
+    setWeapon(weapon) {
+        this.weapon = weapon;
+    }
 }
 
 module.exports = Piece;
