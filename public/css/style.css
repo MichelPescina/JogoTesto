@@ -1,0 +1,84 @@
+/* Terminal Theme CSS Variables */
+:root {
+    --bg-grad: linear-gradient(#1f213d, #5f2a54);
+    --terminal-bg: #0d1117;
+    --terminal-fg: #58a6ff;
+    --terminal-green: #29da55;
+    --terminal-yellow: #f9c74f;
+    --terminal-red: #f85149;
+    --terminal-cyan: #79c0ff;
+    --terminal-white: #f0f6fc;
+    --terminal-gray: #6e7681;
+    --terminal-dark-gray: #21262d;
+    --terminal-border: #30363d;
+
+    --font-family: 'Source Code Pro', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    --font-size: 18px;
+    --line-height: 1.4;
+
+    --animation-fast: 0.15s;
+    --animation-normal: 0.3s;
+    --animation-slow: 0.5s;
+}
+
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-family);
+    font-size: var(--font-size);
+    line-height: var(--line-height);
+    background-repeat: repeat;
+    background-attachment: fixed;
+    background-image: var(--bg-grad);
+    color: var(--terminal-fg);
+    overflow: hidden;
+    user-select: none;
+}
+
+#loggin {
+    
+    text-align: center;
+}
+
+.input-box {
+    font-family: var(--font-family);
+    font-size: var(--font-size);
+    color: var(--terminal-yellow);
+    background-color: var(--terminal-dark-gray);
+    border-radius: 5px;
+    border-style: solid;
+    border-color: var(--terminal-border);
+    border-width: 1px;
+    padding: 0px 6px;
+}
+
+.button {
+    font-family: var(--font-family);
+    font-size: var(--font-size);
+    color: var(--terminal-green);
+    background-color: var(--terminal-dark-gray);
+    border-radius: 5px;
+    border-style: solid;
+    border-color: var(--terminal-border);
+    border-width: 1px;
+    cursor: pointer;
+    padding: 0px 6px;
+}
+
+.button:hover {
+    background-color: var(--terminal-bg);
+}
+
+
+.ascii-art {
+    color: var(--terminal-cyan);
+    text-align: center;
+    margin: 20px 0;
+    font-size: 20px;
+    line-height: 1.2;
+}

@@ -5,6 +5,7 @@ class Session {
         this.sessionId = sessionId;
         this.creationDate = new Date();
         this.lastOnline = this.creationDate;
+        this.name = null;
         this.matchId = null;
     }
 }
@@ -21,11 +22,6 @@ class SessionManager {
         const newSession = new Session(sessionId);
         this.sessions.set(sessionId, newSession);
         return sessionId;
-    }
-
-    assignSocket(sessionId, socket) {
-        let session = this.sessions.get(sessionId);
-        session.setSocket(socket);
     }
 
     isValidSession(sessionId) {

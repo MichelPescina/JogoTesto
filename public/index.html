@@ -1,24 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>JogoTesto</title>
-	<script src="/socket.io/socket.io.js"  type="text/javascript"></script>
+	<script src="/socket.io/socket.io.js" type="text/javascript"></script>
+	<link rel="stylesheet" href="css/style.css">
 </head>
+
 <body>
 	<button id="testButton">Test</button>
 	<div id="testTerminal"></div>
 	<div class="container">
 		<div id="loggin">
-			<form id="playerForm">
-				<label for="playerName"> Player Name</label>
-				<input type="text" id="playerName" name="playerName">
-				<input type="submit" value="Enter Match">
-			</form>
+			<div>
+				<pre class="ascii-art">
+ ╦╔═╗╔═╗╔═╗╔╦╗╔═╗╔═╗╔╦╗╔═╗
+ ║║ ║║ ╦║ ║ ║ ║╣ ╚═╗ ║ ║ ║
+╚╝╚═╝╚═╝╚═╝ ╩ ╚═╝╚═╝ ╩ ╚═╝
+
+Text-Based Battle Royale
+            	</pre>
+			</div>
+
+			<div>
+				<form id="playerForm">
+					<div><label for="playerName"> Player Name</label></div>
+					<input type="text" id="playerName" class="input-box" name="playerName">
+					<input type="submit" id='playButton' class="button" value="Play">
+				</form>
+			</div>
+
+		</div>
+		<div id="matchSelection">
+			<div class="matchBox">
+				<h2> Select a match</h2>
+				<div>
+					Create match
+					<form id="createMatch">
+					</form>
+				</div>
+				<div>
+					Choose a match.
+
+				</div>
+			</div>
+		</div>
+		<div id="game">
+			<div id="playArea">
+				<div id="gameArea"></div>
+				<div id="gameChat"></div>
+			</div>
 		</div>
 	</div>
 	<!-- Client-side Javascript-->
 	<script src="js/Client.js" type="text/javascript"></script>
 </body>
+
 </html>
