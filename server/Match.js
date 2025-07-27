@@ -4,6 +4,7 @@ const Courier = require('./Courier');
 const GameEngine = require('./game/GameEngine');
 const GameCommand = require('./game/GameCommand');
 const GameMsg = require('./game/GameMsg');
+const {Battle} = require('./game/Battle');
 
 class Player {
     constructor (playerId, name) {
@@ -46,6 +47,8 @@ class Match {
         this.outCourier = outCourier;
         this.gameCourier = new Courier();
         this.state = Match.STATE.QUEUE;
+        this.battleTimers = new Map(); // battleId -> timer data
+        this.battleTimeout = 10 * 1000; // 10 seconds for battle responses
     }
 
     createPlayer (playerId = null, name) {
@@ -169,7 +172,7 @@ class Match {
     /**
      * Handles search commands
      */
-    #handleSearchCommand(playerId, pieceId, command) {
+    #handleSearchCommand(playerId, pieceId, _command) {
         const success = this.game.startSearch(pieceId);
         if (!success) {
             this.outCourier.deliver(
@@ -209,19 +212,44 @@ class Match {
                 playerId,
                 GameMsg.createError(playerId, "Cannot start battle")
             );
+            return;
         }
+
+        // Start the 10-second timer for this battle
+        // Get all pieces in the attacker's room that are in BATTLING state
+        const attacker = this.game.allPieces.get(pieceId);
+        const room = this.game.worldMap.get(attacker.getRoomId());
+        const participants = Array.from(room.getAllPieces())
+            .filter(id => this.game.allPieces.get(id).getState() === 'BATTLING');
+        
+        this.#startBattleTimer(battleId, participants);
     }
 
     /**
      * Handles battle response commands
      */
     #handleRespondCommand(playerId, pieceId, command) {
+        const timerData = this.battleTimers.get(command.battleId);
+        if (!timerData) {
+            this.outCourier.deliver(
+                playerId,
+                GameMsg.createError(playerId, "Battle timer has expired or battle not found")
+            );
+            return;
+        }
+        
+        // Record the response
+        timerData.responses.set(pieceId, command.decision);
+        
+        // Set decision in battle system
         this.game.respondToAttack(command.battleId, pieceId, command.decision);
-        // The battle system will handle ending the battle when all responses are in
-        // For now, we'll trigger battle end immediately (this may need refinement)
-        setTimeout(() => {
+        
+        // Check if all participants have responded
+        if (timerData.responses.size === timerData.participants.size) {
+            // All players responded, end battle early
             this.game.endBattle(command.battleId);
-        }, 1000);
+            this.#cleanupBattleTimer(command.battleId);
+        }
     }
 
     /**
@@ -241,7 +269,7 @@ class Match {
      * Finds a piece ID by player name
      */
     #findPieceByPlayerName(playerName) {
-        for (const [playerId, player] of this.players) {
+        for (const [_playerId, player] of this.players) {
             if (player.name.toLowerCase() === playerName.toLowerCase()) {
                 return player.getOwnPieceId();
             }
@@ -414,6 +442,12 @@ class Match {
             this.gracePeriodTimerId = null;
         }
         
+        // Clear all battle timers
+        for (const [_battleId, timerData] of this.battleTimers) {
+            clearTimeout(timerData.timerId);
+        }
+        this.battleTimers.clear();
+        
         // Clear players
         this.players.clear();
         this.pieceToPlayer.clear();
@@ -440,6 +474,76 @@ class Match {
             gracePeriodActive: this.state === Match.STATE.GRACE,
             gracePeriodRemaining: this.getRemainingGraceTime()
         };
+    }
+
+    /**
+     * Starts a 10-second battle timer for the given battle
+     * @param {string} battleId - The battle identifier
+     * @param {string[]} participants - Array of pieceIds participating in the battle
+     */
+    #startBattleTimer(battleId, participants) {
+        const timerId = setTimeout(() => {
+            this.#onBattleTimerExpired(battleId);
+        }, this.battleTimeout);
+        
+        const timerData = {
+            timerId,
+            startTime: Date.now(),
+            participants: new Set(participants),
+            responses: new Map(),
+            battleId
+        };
+        
+        this.battleTimers.set(battleId, timerData);
+        
+        // Notify participants of timer start
+        participants.forEach(pieceId => {
+            const playerId = this.pieceToPlayer.get(pieceId);
+            if (playerId) {
+                this.outCourier.deliver(
+                    playerId,
+                    GameMsg.createBattleStart(playerId, {
+                        battleId,
+                        timeLimit: this.battleTimeout,
+                        message: "You have 10 seconds to respond!",
+                        participants: participants.length
+                    })
+                );
+            }
+        });
+    }
+
+    /**
+     * Handles battle timer expiration - sets default ESCAPE for non-responsive players
+     * @param {string} battleId - The battle identifier
+     */
+    #onBattleTimerExpired(battleId) {
+        const timerData = this.battleTimers.get(battleId);
+        if (!timerData) return;
+        
+        // Set default ESCAPE decision for non-responsive players
+        timerData.participants.forEach(pieceId => {
+            if (!timerData.responses.has(pieceId)) {
+                // Player didn't respond, treat as ESCAPE
+                this.game.respondToAttack(battleId, pieceId, Battle.DECISION.ESCAPE);
+            }
+        });
+        
+        // End the battle
+        this.game.endBattle(battleId);
+        this.#cleanupBattleTimer(battleId);
+    }
+
+    /**
+     * Cleans up battle timer resources
+     * @param {string} battleId - The battle identifier
+     */
+    #cleanupBattleTimer(battleId) {
+        const timerData = this.battleTimers.get(battleId);
+        if (timerData) {
+            clearTimeout(timerData.timerId);
+            this.battleTimers.delete(battleId);
+        }
     }
 
     testCall () {
