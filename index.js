@@ -4,12 +4,16 @@ const { join } = require('node:path');
 const { Server } = require('socket.io');
 
 const SessionManager = require('./server/SessionManager');
+const Match = require('./server/Match');
+const Courier = require('./server/Courier');
 
 const app = express();
 const server = createServer(app);
 const io = new Server(server)
 
 const sessionManager = new SessionManager();
+const sessionToSocket = new Courier();
+const match = new Match(sessionToSocket);
 
 app.use(express.static('public'))
 
@@ -22,23 +26,39 @@ app.get('/', (req, res) => {
 io.on('connection', (socket) => {
     // Authentication and session persistance
     const auth = socket.handshake.auth;
-    console.log('Server: ', socket.id);
-    console.log('sessionId: ', socket.handshake.auth.sessionId);
-    console.log('creationDate: ', socket.handshake.auth.creationDate);
 
     let session = null;
     if(!sessionManager.isValidSession(auth.sessionId, auth.creationDate)) {
         const id = sessionManager.createSession();
         const temp = sessionManager.getSession(id);
-        session = {session: temp.sessionId, creationDate: temp.creationDate};
+        session = {sessionId: temp.sessionId};
     }
     else {
-        session = {sessionId: auth.sessionId, creationDate: auth.creationDate};
+        session = {sessionId: auth.sessionId};
     }
-
-    console.log(session);
-    socket.emit('session', session);
+    
+    // Sets the output for the courier
+    sessionToSocket.setAddress(session.sessionId, (msg) => {
+        socket.emit('test', msg);
+        console.log('MATCH -> OUTSIDE');
+    })
     // socket.on() define callbacks for different events
+
+    socket.on('joinMatch', (msg) => {
+        console.log('Miau');
+        if (match.playersCanJoin()) {
+            match.createPlayer(session.sessionId, msg);
+        }
+    });
+
+    socket.on('testCall', (miau) => {
+        console.log(match.state);
+        //console.log('OVO');
+        match.testCall();
+        //console.log('AVA');
+    });
+
+    socket.emit('session', session);
 });
 
 

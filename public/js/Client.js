@@ -1,12 +1,13 @@
 const socket = io({
     auth: {
-        sessionId: localStorage.sessionId,
-        creationDate: localStorage.creationDate
+        sessionId: sessionStorage.sessionId
     }
 });
 
 // All elements that will be used in this page
 const elems = {
+    testButton: null,
+    testTerminal: null,
     playerForm: null,
     playerName: null
 };
@@ -15,6 +16,8 @@ const elems = {
  * Initializes the elements that will be used during the script
  */
 function setElements() {
+    elems.testTerminal = document.getElementById('testTerminal');
+    elems.testButton = document.getElementById('testButton');
     elems.playerForm = document.getElementById('playerForm');
     elems.playerName = document.getElementById('playerName');
 }
@@ -28,10 +31,16 @@ socket.on('connect', () => {
     console.log(socket.creationDate)
 });
 
+// This saves sessionId in localStorage
 socket.on('session', (session) => {
+    sessionStorage.setItem('sessionId', session.sessionId);
     console.log(session);
-    // ADD SESSION PERSISTANCE
-})
+});
+
+socket.on('test', (msg) => {
+    elems.testTerminal.innerHtml += `${msg}\n`;
+    console.log(msg);
+});
 
 /**
  * Callback for submit operation. Gets the name, retrieves playerId and matchId
@@ -40,7 +49,12 @@ socket.on('session', (session) => {
 const joinGameHandler = (event) => {
     event.preventDefault();
     const name = elems.playerName.value;
+    socket.emit('joinMatch', name);
     console.log(name);
+}
+
+const testHandler = (event) => {
+    socket.emit('testCall', 'lol');
 }
 
 /**
@@ -48,6 +62,7 @@ const joinGameHandler = (event) => {
  */
 function setCallbacks() {
     elems.playerForm.addEventListener('submit', joinGameHandler);
+    elems.testButton.addEventListener('click', testHandler);
 }
 
 

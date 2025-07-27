@@ -4,7 +4,7 @@ class Session {
     constructor (sessionId) {
         this.sessionId = sessionId;
         this.creationDate = new Date();
-        this.playerId = null;
+        this.lastOnline = this.creationDate;
         this.matchId = null;
     }
 }
@@ -23,14 +23,15 @@ class SessionManager {
         return sessionId;
     }
 
-    isValidSession(sessionId, creationDate) {
-        if (!sessionId || !creationDate) return false;
-        const date = typeof(creationDate) === 'string'? 
-            Date.parse(creationDate):
-            creationDate;
+    assignSocket(sessionId, socket) {
+        let session = this.sessions.get(sessionId);
+        session.setSocket(socket);
+    }
+
+    isValidSession(sessionId) {
+        if (!sessionId) return false;
         const isValid = this.sessions.has(sessionId) && 
-            date === this.sessions.get(sessionId).creationDate &&
-            date - this.sessions.get(sessionId).creationDate < this.expirationThreshold;
+            (new Date() - this.sessions.get(sessionId).lastOnline < this.expirationThreshold);
         return isValid;
     }
 

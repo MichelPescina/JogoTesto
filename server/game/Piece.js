@@ -6,8 +6,9 @@ class Piece {
         DEAD: "DEAD"
     }
 
-    constructor (pieceId, spawnRoomId) {
+    constructor (pieceId, name, spawnRoomId) {
         this.pieceId = pieceId; // The piece unique identifier
+        this.name = name;
         this.roomId = spawnRoomId; // The room where the piece is
         this.state = Piece.STATE.MOVING;
         this.weapon = null; // Reference to Weapon

@@ -17,7 +17,11 @@ function randomInt (start, end) {
 }
 
 class GameEngine {
-    constructor () {
+    /**
+     * 
+     * @param {*} courier - A Courier instance which maps pieceIds to a delivery function
+     */
+    constructor (outCourier) {
         this.allPieces = new Map(); //pieceId -> Piece
         this.allWeapons = new Map(); // weaponId -> Weapon
         this.totalChances = null; // Sum of all weapon chances
@@ -27,6 +31,7 @@ class GameEngine {
         this.escapeProb = 1.5;
         this.killBonus = 2; // Strength added to piece per kill
         this.remainingPieces = 0;
+        this.outCourier = outCourier;
     }
 
     loadWorld(path) {
@@ -71,10 +76,10 @@ class GameEngine {
         return newWeaponId;
     }
 
-    createPiece (pieceId = null, spawnRoomId = this.spawnRoomId) {
+    createPiece (pieceId = null, name = 'Piece', spawnRoomId = this.spawnRoomId) {
         const id = pieceId? pieceId : randomUUID();
         const room = this.worldMap.get(spawnRoomId);
-        let newPiece = new Piece(id, spawnRoomId);
+        let newPiece = new Piece(id, name, spawnRoomId);
         this.allPieces.set(id, newPiece);
         room.addPiece(id);
         this.remainingPieces++;
@@ -168,7 +173,10 @@ class GameEngine {
 
     respondToAttack (battleId, defenderId, decision) {
         let battle = this.battles.get(battleId);
-        battle.setDecision(defenderId, decision);
+        if (battle) {
+            battle.setDecision(defenderId, decision);
+        }
+        return; //// Game Messages
     }
 
     endBattle (battleId) {
@@ -192,6 +200,7 @@ class GameEngine {
         // Handle winner
         this.#handleWinner(winnerId, totalKilled);
         //// CLEANUP OF DATA STRUCTURES
+        this.battles.delete(battleId);
     }
 
     #handleWinner (winnerId, kills) {
@@ -238,29 +247,48 @@ class GameEngine {
         room.setWeaponId(null);
     }
 
-    getObservation (pieceId) {
+    getStatePiece (pieceId) {
         let piece = this.allPieces.get(pieceId);
-        let room = this.worldMap.get(piece.getRoomId());
         let obs = {};
         obs.pieceId = pieceId;
         obs.pieceAttack = piece.getStrength();
-        obs.pieceWeapon = piece.getWeapon();
         obs.pieceState = piece.getState();
-        // Room
-        obs.roomId = piece.getRoomId();
-        obs.roomName = room.getName();
-        obs.roomDesc = room.getDescription();
-        obs.roomHidden = room.hasWeapon();
-        obs.roomPieces = Array.from(room.getAllPieces());
-        obs.roomExits = Object.entries(room.getExits()).map(([dir, roomId]) => {
-            let newExit = {}
-            newExit[dir] = this.worldMap.get(roomId).getName();
-            return newExit;
+        return {piece: obs};
+    }
+
+    getStateRoom (pieceId) {
+        let piece = this.allPieces.get(pieceId);
+        let room = this.worldMap.get(piece.getRoomId());
+        let obs = {};
+        obs.name = room.getName();
+        obs.desc = room.getDescription();
+        obs.hidden = room.hasWeapon();
+        obs.exits = {};
+        Object.entries(room.getExits()).forEach(([dir, roomId]) => {
+            obs.exits[dir] = this.worldMap.get(roomId).getName();
         });
-        return obs;
+        return {room: obs};
+    }
+
+    getStateOthers (pieceId) {
+        let piece = this.allPieces.get(pieceId);
+        let room = this.worldMap.get(piece.getRoomId());
+        return {others: Array.from(room.getAllPieces())};
+    }
+
+    testCall () {
+        console.log('GAME ENGINE TEST CALL');
+        for (const [pieceId, piece] of this.allPieces) {
+            this.outCourier.deliver(
+                pieceId, 
+                {id: pieceId, text: `Hello from ${piece.name}`}
+            );
+        }
     }
 }
 
+module.exports = GameEngine;
+/*
 const game = new GameEngine();
 let miau = game.loadWorld('./server/data/simplerTestWorld.json');
 let id1 = game.createPiece('p1');
@@ -283,3 +311,4 @@ if (battleId) {
 console.log(game.getObservation(id1));
 console.log(game.getObservation(id2));
 console.log(game.getObservation(id3));
+*/
