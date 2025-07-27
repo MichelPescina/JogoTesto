@@ -2,6 +2,8 @@ const { randomUUID } = require('node:crypto');
 const Courier = require('./Courier');
 
 const GameEngine = require('./game/GameEngine');
+const GameCommand = require('./game/GameCommand');
+const GameMsg = require('./game/GameMsg');
 
 class Player {
     constructor (playerId, name) {
@@ -35,8 +37,11 @@ class Match {
         this.pieceToPlayer = new Map(); // pieceId -> playerId
         this.minPlayers = 2;
         this.maxPlayers = 5;
-        this.countdownDuration = 0 * 1000; // secs * millisecs
+        this.countdownDuration = 10 * 1000; // 10 seconds countdown
         this.countdownTimerId = null;
+        this.gracePeriodDuration = 60 * 1000; // 60 seconds grace period
+        this.gracePeriodTimerId = null;
+        this.gracePeriodStartTime = null;
         this.game = null;
         this.outCourier = outCourier;
         this.gameCourier = new Courier();
@@ -71,8 +76,177 @@ class Match {
         this.#updateState();
     }
 
-    execGameComm (comm) {
+    /**
+     * Executes a game command from a player
+     * @param {string} playerId - ID of the player issuing the command
+     * @param {Object} command - The game command object
+     */
+    execGameComm (playerId, command) {
+        // Check if player exists in this match
+        const player = this.players.get(playerId);
+        if (!player) {
+            console.log(`Player ${playerId} not found in match ${this.matchId}`);
+            return false;
+        }
 
+        // Check if the match has a game running
+        if (!this.game) {
+            this.outCourier.deliver(
+                playerId,
+                GameMsg.createError(playerId, "Game has not started yet")
+            );
+            return false;
+        }
+
+        const pieceId = player.getOwnPieceId();
+
+        // Validate the command first
+        GameCommand.validate(command, (error, validatedCommand) => {
+            if (error) {
+                this.outCourier.deliver(
+                    playerId,
+                    GameMsg.createError(playerId, `Invalid command: ${error.message}`)
+                );
+                return;
+            }
+
+            // Route the command based on type
+            this.#routeCommand(playerId, pieceId, validatedCommand);
+        });
+
+        return true;
+    }
+
+    /**
+     * Routes validated commands to appropriate game methods
+     * @param {string} playerId - Player ID
+     * @param {string} pieceId - Piece ID in the game
+     * @param {Object} command - Validated command
+     */
+    #routeCommand(playerId, pieceId, command) {
+        switch (command.type) {
+            case GameCommand.TYPE.MOVE:
+                this.#handleMoveCommand(playerId, pieceId, command);
+                break;
+
+            case GameCommand.TYPE.SEARCH:
+                this.#handleSearchCommand(playerId, pieceId, command);
+                break;
+
+            case GameCommand.TYPE.ATTACK:
+                this.#handleAttackCommand(playerId, pieceId, command);
+                break;
+
+            case GameCommand.TYPE.RESPOND:
+                this.#handleRespondCommand(playerId, pieceId, command);
+                break;
+
+            case GameCommand.TYPE.CHAT:
+                this.#handleChatCommand(playerId, pieceId, command);
+                break;
+
+            default:
+                this.outCourier.deliver(
+                    playerId,
+                    GameMsg.createError(playerId, `Unknown command type: ${command.type}`)
+                );
+        }
+    }
+
+    /**
+     * Handles movement commands
+     */
+    #handleMoveCommand(playerId, pieceId, command) {
+        const success = this.game.movePiece(pieceId, command.direction);
+        if (!success) {
+            this.outCourier.deliver(
+                playerId,
+                GameMsg.createError(playerId, `Cannot move ${command.direction} from current location`)
+            );
+        }
+    }
+
+    /**
+     * Handles search commands
+     */
+    #handleSearchCommand(playerId, pieceId, command) {
+        const success = this.game.startSearch(pieceId);
+        if (!success) {
+            this.outCourier.deliver(
+                playerId,
+                GameMsg.createError(playerId, "Cannot search right now")
+            );
+        }
+    }
+
+    /**
+     * Handles attack commands (checks grace period)
+     */
+    #handleAttackCommand(playerId, pieceId, command) {
+        // Check if grace period is still active
+        if (this.state === Match.STATE.GRACE) {
+            const timeRemaining = this.getRemainingGraceTime();
+            this.outCourier.deliver(
+                playerId,
+                GameMsg.createError(playerId, `Cannot attack during grace period (${Math.ceil(timeRemaining / 1000)}s remaining)`)
+            );
+            return;
+        }
+
+        // Find target player by name
+        const targetPieceId = this.#findPieceByPlayerName(command.targetId);
+        if (!targetPieceId) {
+            this.outCourier.deliver(
+                playerId,
+                GameMsg.createError(playerId, `Player '${command.targetId}' not found`)
+            );
+            return;
+        }
+
+        const battleId = this.game.startBattle(pieceId);
+        if (!battleId) {
+            this.outCourier.deliver(
+                playerId,
+                GameMsg.createError(playerId, "Cannot start battle")
+            );
+        }
+    }
+
+    /**
+     * Handles battle response commands
+     */
+    #handleRespondCommand(playerId, pieceId, command) {
+        this.game.respondToAttack(command.battleId, pieceId, command.decision);
+        // The battle system will handle ending the battle when all responses are in
+        // For now, we'll trigger battle end immediately (this may need refinement)
+        setTimeout(() => {
+            this.game.endBattle(command.battleId);
+        }, 1000);
+    }
+
+    /**
+     * Handles chat commands
+     */
+    #handleChatCommand(playerId, pieceId, command) {
+        const success = this.game.processChatMessage(pieceId, command.message);
+        if (!success) {
+            this.outCourier.deliver(
+                playerId,
+                GameMsg.createError(playerId, "Cannot send chat message")
+            );
+        }
+    }
+
+    /**
+     * Finds a piece ID by player name
+     */
+    #findPieceByPlayerName(playerName) {
+        for (const [playerId, player] of this.players) {
+            if (player.name.toLowerCase() === playerName.toLowerCase()) {
+                return player.getOwnPieceId();
+            }
+        }
+        return null;
     }
 
     #startMatch () {
@@ -80,10 +254,13 @@ class Match {
         this.game = new GameEngine(this.gameCourier);
         //// HERE THE FUNCTIONALITY FOR PROCEDURAL OR AI GENERATION WILL BE USED
         this.game.loadWorld('./server/data/simplerTestWorld.json');
+        
+        // Create game pieces for all players
         for (let [playerId, player] of this.players) {
             let pieceId = this.game.createPiece(null, player.name);
             player.setOwnPieceId(pieceId);
             this.pieceToPlayer.set(pieceId, playerId);
+            
             let delivery = (msg) => {
                 console.log('GAME -> MATCH');
                 let playerId = this.pieceToPlayer.get(msg.id);
@@ -94,7 +271,99 @@ class Match {
             // Delivers messages to this level
             this.gameCourier.setAddress(pieceId, delivery);
         }
+        
+        // Transition to grace period
         this.state = Match.STATE.GRACE;
+        this.gracePeriodStartTime = Date.now();
+        
+        // Notify all players that the match has started
+        this.#broadcastToAllPlayers(
+            GameMsg.createGracePeriod(null, {
+                active: true,
+                duration: this.gracePeriodDuration,
+                timeRemaining: this.gracePeriodDuration,
+                message: "Match started! Grace period active - no combat for 60 seconds"
+            })
+        );
+        
+        // Set grace period timer
+        this.gracePeriodTimerId = setTimeout(() => {
+            this.#endGracePeriod();
+        }, this.gracePeriodDuration);
+        
+        // Send periodic grace period updates
+        this.#scheduleGracePeriodUpdates();
+        
+        console.log(`Grace period started for ${this.gracePeriodDuration / 1000} seconds`);
+    }
+
+    /**
+     * Ends the grace period and transitions to battle phase
+     */
+    #endGracePeriod() {
+        this.state = Match.STATE.BATTLE;
+        this.gracePeriodTimerId = null;
+        
+        // Notify all players that combat is now allowed
+        this.#broadcastToAllPlayers(
+            GameMsg.createGracePeriod(null, {
+                active: false,
+                timeRemaining: 0,
+                message: "Grace period ended! Combat is now allowed!"
+            })
+        );
+        
+        console.log('Grace period ended - combat now allowed');
+    }
+
+    /**
+     * Schedules periodic grace period countdown updates
+     */
+    #scheduleGracePeriodUpdates() {
+        if (this.state !== Match.STATE.GRACE) return;
+        
+        const updateInterval = 10000; // Update every 10 seconds
+        const timeElapsed = Date.now() - this.gracePeriodStartTime;
+        const timeRemaining = Math.max(0, this.gracePeriodDuration - timeElapsed);
+        
+        if (timeRemaining > 0) {
+            // Send update to all players
+            this.#broadcastToAllPlayers(
+                GameMsg.createGracePeriod(null, {
+                    active: true,
+                    timeRemaining: timeRemaining,
+                    message: `Grace period: ${Math.ceil(timeRemaining / 1000)} seconds remaining`
+                })
+            );
+            
+            // Schedule next update
+            setTimeout(() => {
+                this.#scheduleGracePeriodUpdates();
+            }, Math.min(updateInterval, timeRemaining));
+        }
+    }
+
+    /**
+     * Gets remaining grace period time in milliseconds
+     */
+    getRemainingGraceTime() {
+        if (this.state !== Match.STATE.GRACE || !this.gracePeriodStartTime) {
+            return 0;
+        }
+        
+        const timeElapsed = Date.now() - this.gracePeriodStartTime;
+        return Math.max(0, this.gracePeriodDuration - timeElapsed);
+    }
+
+    /**
+     * Broadcasts a message to all players in the match
+     */
+    #broadcastToAllPlayers(message) {
+        for (const [playerId, player] of this.players) {
+            const playerMessage = { ...message };
+            playerMessage.id = playerId;
+            this.outCourier.deliver(playerId, playerMessage);
+        }
     }
 
     totalPlayers () {
@@ -127,6 +396,50 @@ class Match {
         let cond2 = this.state === Match.STATE.QUEUE;
         let cond3 = this.state === Match.STATE.COUNTDOWN;
         return  cond1 && cond2 || cond3;
+    }
+
+    /**
+     * Cleanup method to clear timers and resources
+     */
+    clean() {
+        // Clear countdown timer
+        if (this.countdownTimerId) {
+            clearTimeout(this.countdownTimerId);
+            this.countdownTimerId = null;
+        }
+        
+        // Clear grace period timer
+        if (this.gracePeriodTimerId) {
+            clearTimeout(this.gracePeriodTimerId);
+            this.gracePeriodTimerId = null;
+        }
+        
+        // Clear players
+        this.players.clear();
+        this.pieceToPlayer.clear();
+        
+        console.log(`Match ${this.matchId} cleaned up`);
+    }
+
+    /**
+     * Checks if the match is in a state where commands can be executed
+     */
+    canExecuteCommands() {
+        return this.state === Match.STATE.GRACE || this.state === Match.STATE.BATTLE;
+    }
+
+    /**
+     * Gets current match info for players
+     */
+    getMatchInfo() {
+        return {
+            matchId: this.matchId,
+            state: this.state,
+            playerCount: this.players.size,
+            maxPlayers: this.maxPlayers,
+            gracePeriodActive: this.state === Match.STATE.GRACE,
+            gracePeriodRemaining: this.getRemainingGraceTime()
+        };
     }
 
     testCall () {

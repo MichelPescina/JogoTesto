@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>JogoTesto - Game Interface</title>
+	<script src="/socket.io/socket.io.js" type="text/javascript"></script>
+	<link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+	<div class="container">
+		<!-- Game Header -->
+		<div id="gameHeader">
+			<div>
+				<pre class="ascii-art">
+ ╦╔═╗╔═╗╔═╗╔╦╗╔═╗╔═╗╔╦╗╔═╗
+ ║║ ║║ ╦║ ║ ║ ║╣ ╚═╗ ║ ║ ║
+╚╝╚═╝╚═╝╚═╝ ╩ ╚═╝╚═╝ ╩ ╚═╝
+
+Text-Based Battle Royale - Game Interface
+            	</pre>
+			</div>
+		</div>
+
+		<!-- Game Status Bar -->
+		<div id="statusBar">
+			<div class="status-info">
+				<span id="playerInfo">Player: <span id="playerName">Loading...</span></span>
+				<span id="matchInfo">Match: <span id="matchId">Loading...</span></span>
+				<span id="connectionStatus" class="status-connected">Connected</span>
+			</div>
+			<div class="game-controls">
+				<button id="helpButton" class="button">Help</button>
+				<button id="leaveButton" class="button">Leave Game</button>
+			</div>
+		</div>
+
+		<!-- Main Game Interface -->
+		<div id="gameInterface">
+			<!-- Terminal Container - This will be populated by Terminal.js -->
+			<div id="gameContainer">
+				<!-- Terminal interface will be rendered here -->
+			</div>
+		</div>
+
+		<!-- Game Instructions Panel (initially hidden) -->
+		<div id="instructionsPanel" style="display: none;">
+			<div class="instructions-content">
+				<h3>Game Instructions</h3>
+				<div class="instruction-section">
+					<h4>Movement Commands:</h4>
+					<ul>
+						<li><strong>north, south, east, west</strong> (or n, s, e, w) - Move between rooms</li>
+					</ul>
+				</div>
+				<div class="instruction-section">
+					<h4>Action Commands:</h4>
+					<ul>
+						<li><strong>search</strong> - Search for weapons (2 second delay, vulnerable during search)</li>
+						<li><strong>attack &lt;player&gt;</strong> - Initiate combat with another player</li>
+					</ul>
+				</div>
+				<div class="instruction-section">
+					<h4>Communication:</h4>
+					<ul>
+						<li><strong>Any other text</strong> - Send chat message to players in the same room</li>
+					</ul>
+				</div>
+				<div class="instruction-section">
+					<h4>Special Features:</h4>
+					<ul>
+						<li><strong>Grace Period:</strong> First 60 seconds - no combat allowed</li>
+						<li><strong>History:</strong> Use ↑/↓ arrows to navigate command history</li>
+						<li><strong>Tab Completion:</strong> Press Tab to complete commands</li>
+					</ul>
+				</div>
+				<button id="closeInstructions" class="button">Close</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- Game-specific styles -->
+	<style>
+		.container {
+			height: 100vh;
+			display: flex;
+			flex-direction: column;
+			padding: 10px;
+			gap: 10px;
+		}
+
+		#gameHeader {
+			text-align: center;
+			margin-bottom: 10px;
+		}
+
+		#statusBar {
+			background-color: var(--terminal-dark-gray);
+			border: 1px solid var(--terminal-border);
+			border-radius: 5px;
+			padding: 10px 15px;
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			font-size: 14px;
+		}
+
+		.status-info {
+			display: flex;
+			gap: 20px;
+		}
+
+		.status-info span {
+			color: var(--terminal-fg);
+		}
+
+		.status-connected {
+			color: var(--terminal-green) !important;
+		}
+
+		.status-disconnected {
+			color: var(--terminal-red) !important;
+		}
+
+		.game-controls {
+			display: flex;
+			gap: 10px;
+		}
+
+		#gameInterface {
+			flex: 1;
+			min-height: 0;
+			position: relative;
+		}
+
+		#gameContainer {
+			height: 100%;
+			width: 100%;
+		}
+
+		#instructionsPanel {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background-color: rgba(0, 0, 0, 0.8);
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			z-index: 1000;
+		}
+
+		.instructions-content {
+			background-color: var(--terminal-bg);
+			border: 1px solid var(--terminal-border);
+			border-radius: 8px;
+			padding: 20px;
+			max-width: 600px;
+			max-height: 80vh;
+			overflow-y: auto;
+			color: var(--terminal-fg);
+		}
+
+		.instructions-content h3 {
+			color: var(--terminal-green);
+			margin-bottom: 15px;
+			text-align: center;
+		}
+
+		.instructions-content h4 {
+			color: var(--terminal-cyan);
+			margin: 15px 0 8px 0;
+		}
+
+		.instructions-content ul {
+			margin: 10px 0 15px 20px;
+			color: var(--terminal-white);
+		}
+
+		.instructions-content li {
+			margin: 5px 0;
+		}
+
+		.instructions-content strong {
+			color: var(--terminal-yellow);
+		}
+
+		.instruction-section {
+			margin-bottom: 15px;
+		}
+
+		#closeInstructions {
+			margin-top: 20px;
+			width: 100%;
+		}
+
+		/* Hide scrollbars but keep functionality */
+		.instructions-content::-webkit-scrollbar {
+			width: 8px;
+		}
+
+		.instructions-content::-webkit-scrollbar-track {
+			background: var(--terminal-dark-gray);
+		}
+
+		.instructions-content::-webkit-scrollbar-thumb {
+			background: var(--terminal-border);
+			border-radius: 4px;
+		}
+
+		/* Mobile responsiveness */
+		@media (max-width: 768px) {
+			.container {
+				padding: 5px;
+				gap: 5px;
+			}
+
+			#statusBar {
+				flex-direction: column;
+				gap: 10px;
+				align-items: stretch;
+			}
+
+			.status-info {
+				justify-content: space-between;
+				flex-wrap: wrap;
+				gap: 10px;
+			}
+
+			.game-controls {
+				justify-content: center;
+			}
+
+			.instructions-content {
+				margin: 10px;
+				max-width: none;
+				max-height: 90vh;
+			}
+		}
+	</style>
+
+	<!-- Client-side Javascript -->
+	<script src="js/Terminal.js" type="text/javascript"></script>
+	<script src="js/GameClient.js" type="text/javascript"></script>
+	
+	<!-- Game Interface Logic -->
+	<script>
+		// Additional game interface logic
+		document.addEventListener('DOMContentLoaded', function() {
+			// Help button functionality
+			const helpButton = document.getElementById('helpButton');
+			const instructionsPanel = document.getElementById('instructionsPanel');
+			const closeInstructions = document.getElementById('closeInstructions');
+
+			helpButton.addEventListener('click', function() {
+				instructionsPanel.style.display = 'flex';
+			});
+
+			closeInstructions.addEventListener('click', function() {
+				instructionsPanel.style.display = 'none';
+			});
+
+			// Close instructions when clicking outside
+			instructionsPanel.addEventListener('click', function(e) {
+				if (e.target === instructionsPanel) {
+					instructionsPanel.style.display = 'none';
+				}
+			});
+
+			// Leave game button functionality
+			const leaveButton = document.getElementById('leaveButton');
+			leaveButton.addEventListener('click', function() {
+				if (confirm('Are you sure you want to leave the game?')) {
+					window.location.href = '/';
+				}
+			});
+
+			// Update connection status
+			if (window.gameSocket) {
+				const statusElement = document.getElementById('connectionStatus');
+				
+				window.gameSocket.on('connect', function() {
+					statusElement.textContent = 'Connected';
+					statusElement.className = 'status-connected';
+				});
+
+				window.gameSocket.on('disconnect', function() {
+					statusElement.textContent = 'Disconnected';
+					statusElement.className = 'status-disconnected';
+				});
+
+				// Update player and match info when available
+				window.gameSocket.on('matchJoined', function(data) {
+					document.getElementById('playerName').textContent = data.playerName || 'Unknown';
+					document.getElementById('matchId').textContent = data.matchId || 'Unknown';
+				});
+			}
+
+			// Handle page visibility for mobile
+			document.addEventListener('visibilitychange', function() {
+				if (!document.hidden && window.gameState && window.gameState.terminal) {
+					setTimeout(() => {
+						window.gameState.terminal.inputElement.focus();
+					}, 100);
+				}
+			});
+		});
+
+		// Prevent accidental page refresh during gameplay
+		window.addEventListener('beforeunload', function(e) {
+			if (window.gameState && window.gameState.matchId) {
+				e.preventDefault();
+				e.returnValue = 'You are currently in a game. Are you sure you want to leave?';
+				return e.returnValue;
+			}
+		});
+	</script>
+</body>
+
+</html>

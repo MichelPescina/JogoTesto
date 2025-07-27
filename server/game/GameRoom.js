@@ -10,11 +10,11 @@ class GameRoom {
     }
 
     setWeaponId(weaponId) {
-        this.weapon = weaponId;
+        this.weaponId = weaponId;
     }
 
     getWeaponId() {
-        return this.weaponid;
+        return this.weaponId;
     }
 
     addPiece (pieceId) {
@@ -46,7 +46,7 @@ class GameRoom {
     }
 
     hasWeapon() {
-        return this.weapon !== false;
+        return this.weaponId !== null;
     }
 }
 

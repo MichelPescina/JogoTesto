@@ -5,6 +5,7 @@ const Piece = require('./Piece');
 const Weapon = require('./Weapon');
 const GameRoom = require('./GameRoom');
 const {BattleRes, Battle} = require('./Battle');
+const GameMsg = require('./GameMsg');
 
 /**
  * Generates random integer
@@ -90,33 +91,44 @@ class GameEngine {
         if (this.allPieces.get(pieceId).getState() !== Piece.STATE.MOVING)
             return false;
         let result = false;
-        const origin = this.worldMap.get(this.allPieces.get(pieceId).getRoomId());
+        const piece = this.allPieces.get(pieceId);
+        const origin = this.worldMap.get(piece.getRoomId());
+        let targetRoomId = null;
+        
         switch (direction) {
             case "north":
                 if (origin.validateExit(direction)) {
                     result = true;
-                    this.#swapPieceRooms(pieceId, origin.exits.north);
+                    targetRoomId = origin.exits.north;
                 }
                 break;
             case "south":
                 if (origin.validateExit(direction)) {
                     result = true;
-                    this.#swapPieceRooms(pieceId, origin.exits.south);
+                    targetRoomId = origin.exits.south;
                 }
                 break;
             case "east":
                 if (origin.validateExit(direction)) {
                     result = true;
-                    this.#swapPieceRooms(pieceId, origin.exits.east);
+                    targetRoomId = origin.exits.east;
                 }
                 break;
             case "west":
                 if (origin.validateExit(direction)) {
                     result = true;
-                    this.#swapPieceRooms(pieceId, origin.exits.west);
+                    targetRoomId = origin.exits.west;
                 }
                 break;
         }
+
+        if (result) {
+            this.#swapPieceRooms(pieceId, targetRoomId);
+            // Send real-time updates after successful movement
+            this.#broadcastRoomUpdate(pieceId);
+            this.#broadcastMovementNotification(pieceId, piece.name, origin.id, targetRoomId);
+        }
+        
         return result;
     }
 
@@ -139,6 +151,7 @@ class GameEngine {
         const attacker = this.allPieces.get(attackerId);
         if (attacker.getState() !== Piece.STATE.MOVING) return null;
         const room = this.worldMap.get(attacker.getRoomId());
+        
         // Filters all pieces not available for combat (DEAD or BATTLING)
         // and maps the ids into the actual Objects.
         const filter = (id, state) => this.allPieces.get(id).getState() === state;
@@ -147,28 +160,45 @@ class GameEngine {
             .map(
                 id => this.allPieces.get(id)
             );
+        
+        // Handle searching pieces (vulnerable players are killed immediately)
+        const searchingPieces = pieces.filter(piece => piece.getState() === Piece.STATE.SEARCHING);
+        searchingPieces.forEach(piece => {
+            this.#handleKill(piece.getPieceId());
+            attacker.addStrength(this.killBonus);
+        });
+        
         // Sets the state for all involved pieces and filters out new dead pieces
         pieces = pieces.filter(piece => {
             let passed = true;
-            // If searching kill inmediately
             if (piece.getState() === Piece.STATE.SEARCHING) {
-                this.#handleKill(piece.getPieceId());
-                attacker.addStrength(this.killBonus);
-                passed = false;
+                passed = false; // Already handled above
+            } else {
+                piece.setState(Piece.STATE.BATTLING);
             }
-            else piece.setState(Piece.STATE.BATTLING);
             return passed;
         });
+        
         // Error - Only one piece remains
         if (pieces.length < 2) {
             attacker.setState(Piece.STATE.MOVING);
-            return null; //// Maybe a message?
+            // Send message about failed attack
+            this.outCourier.deliver(
+                attackerId, 
+                GameMsg.createError(attackerId, "No valid targets for battle in this room")
+            );
+            return null;
         }
+        
         // Creates battle and stores it
-        let id = randomUUID();
-        let battle = new Battle(id, attackerId, pieces, this.escapeProb);
-        this.battles.set(id, battle);
-        return id;
+        let battleId = randomUUID();
+        let battle = new Battle(battleId, attackerId, pieces, this.escapeProb);
+        this.battles.set(battleId, battle);
+        
+        // Broadcast battle start to all participants and room observers
+        this.#broadcastBattleStart(battleId, attackerId, pieces);
+        
+        return battleId;
     }
 
     respondToAttack (battleId, defenderId, decision) {
@@ -180,9 +210,15 @@ class GameEngine {
     }
 
     endBattle (battleId) {
-        let battleRes = this.battles.get(battleId).play();
+        let battle = this.battles.get(battleId);
+        if (!battle) return null;
+        
+        let battleRes = battle.play();
         let totalKilled = 0;
         let winnerId = null;
+        let escapeIds = [];
+        let deadIds = [];
+        
         battleRes.forEach(res => {
             switch (res.result) {
                 case BattleRes.RESULT.WON:
@@ -190,17 +226,34 @@ class GameEngine {
                     break
                 case BattleRes.RESULT.ESCAPED:
                     this.#handleEscape(res.pieceId);
+                    escapeIds.push(res.pieceId);
                     break;
                 case BattleRes.RESULT.DIED:
                     this.#handleKill(res.pieceId);
+                    deadIds.push(res.pieceId);
                     totalKilled++;
                     break;
             }
-        })
+        });
+        
         // Handle winner
         this.#handleWinner(winnerId, totalKilled);
-        //// CLEANUP OF DATA STRUCTURES
+        
+        // Broadcast battle end to all relevant parties
+        this.#broadcastBattleEnd(battleId, winnerId, escapeIds, deadIds, battle.pieces);
+        
+        // Check win condition after battle
+        this.#checkWinCondition();
+        
+        // CLEANUP OF DATA STRUCTURES
         this.battles.delete(battleId);
+        
+        return {
+            winnerId,
+            escaped: escapeIds,
+            killed: deadIds,
+            totalKilled
+        };
     }
 
     #handleWinner (winnerId, kills) {
@@ -213,38 +266,94 @@ class GameEngine {
         let piece = this.allPieces.get(pieceId);
         let room = this.worldMap.get(piece.getRoomId());
         let dirs = Array.from(Object.getOwnPropertyNames(room.getExits()));
-        let dir = dirs[randomInt(0, dirs.length)]
+        let dir = dirs[randomInt(0, dirs.length)];
+        
+        const originalRoomId = piece.getRoomId();
         piece.setState(Piece.STATE.MOVING);
         this.movePiece(pieceId, dir);
-        //// Send message.
+        
+        // Send escape notification to the escaped player
+        this.outCourier.deliver(
+            pieceId,
+            GameMsg.createGameState(pieceId, { 
+                type: 'ESCAPE',
+                message: `You escaped to the ${dir}!`
+            })
+        );
+        
+        // Notify other players in the original room
+        this.#broadcastToRoom(originalRoomId, pieceId, 
+            GameMsg.createPlayerLeave(null, { playerName: piece.name, reason: 'escaped' }));
     }
 
     #handleKill (pieceId) {
         let piece = this.allPieces.get(pieceId);
         let room = this.worldMap.get(piece.getRoomId());
+        const playerName = piece.name;
+        const roomId = piece.getRoomId();
+        
         room.removePiece(pieceId);
         piece.setState(Piece.STATE.DEAD);
         this.remainingPieces--;
-        //// Check if we have a win condition
-        //// Send message.
+        
+        // Send death notification to the killed player
+        this.outCourier.deliver(
+            pieceId,
+            GameMsg.createError(pieceId, "You have been killed! Game over.")
+        );
+        
+        // Notify other players in the room
+        this.#broadcastToRoom(roomId, pieceId,
+            GameMsg.createPlayerLeave(null, { playerName: playerName, reason: 'killed' }));
+        
+        // Check if we have a win condition after this kill
+        this.#checkWinCondition();
     }
 
     startSearch (pieceId) {
         let piece = this.allPieces.get(pieceId);
-        // Check if it's in an appropiate State
+        // Check if it's in an appropriate state
         if (piece.getState() !== Piece.STATE.MOVING) return false;
+        
         piece.setState(Piece.STATE.SEARCHING);
+        
+        // Broadcast search start notification
+        this.#broadcastSearchStart(pieceId, piece.name);
+        
+        // Set automatic search completion timer (2 seconds as per PRP requirements)
+        setTimeout(() => {
+            this.endSearch(pieceId);
+        }, 2000);
+        
         return true;
     }
 
     endSearch (pieceId) {
         let piece = this.allPieces.get(pieceId);
-        // Check if it's in an appropiate State
+        // Check if it's in an appropriate state
         if (piece.getState() !== Piece.STATE.SEARCHING) return false;
+        
         let room = this.worldMap.get(piece.getRoomId());
+        let weaponFound = null;
+        let foundWeapon = false;
+        
+        // Check if there's a weapon in the room
+        if (room.hasWeapon() && room.getWeaponId()) {
+            weaponFound = this.allWeapons.get(room.getWeaponId());
+            piece.setWeapon(weaponFound);
+            room.setWeaponId(null);
+            foundWeapon = true;
+        }
+        
         piece.setState(Piece.STATE.MOVING);
-        piece.setWeapon(this.allWeapons.get(room.getWeaponId()));
-        room.setWeaponId(null);
+        
+        // Broadcast search completion
+        this.#broadcastSearchEnd(pieceId, piece.name, foundWeapon, weaponFound);
+        
+        // Update room state for all players in the room
+        this.#broadcastRoomUpdate(pieceId);
+        
+        return foundWeapon;
     }
 
     getStatePiece (pieceId) {
@@ -284,6 +393,231 @@ class GameEngine {
                 {id: pieceId, text: `Hello from ${piece.name}`}
             );
         }
+    }
+
+    /**
+     * Broadcasts room update to a specific player
+     */
+    #broadcastRoomUpdate(pieceId) {
+        const piece = this.allPieces.get(pieceId);
+        const room = this.worldMap.get(piece.getRoomId());
+        
+        // Get all players in the room
+        const playersInRoom = Array.from(room.getAllPieces())
+            .map(id => this.allPieces.get(id)?.name)
+            .filter(name => name);
+
+        const roomData = {
+            roomName: room.getName(),
+            description: room.getDescription(),
+            players: playersInRoom,
+            exits: room.getExits(),
+            weapon: room.hasWeapon() ? this.allWeapons.get(room.getWeaponId())?.name : null
+        };
+
+        this.outCourier.deliver(
+            pieceId,
+            GameMsg.createRoomUpdate(pieceId, roomData)
+        );
+    }
+
+    /**
+     * Broadcasts movement notification to affected rooms
+     */
+    #broadcastMovementNotification(pieceId, playerName, fromRoomId, toRoomId) {
+        // Notify players in the origin room that someone left
+        this.#broadcastToRoom(fromRoomId, pieceId,
+            GameMsg.createPlayerLeave(null, { playerName, reason: 'moved' }));
+
+        // Notify players in the destination room that someone entered
+        this.#broadcastToRoom(toRoomId, pieceId,
+            GameMsg.createPlayerJoin(null, { playerName }));
+    }
+
+    /**
+     * Broadcasts search start notification
+     */
+    #broadcastSearchStart(pieceId, playerName) {
+        const piece = this.allPieces.get(pieceId);
+        const roomId = piece.getRoomId();
+        
+        // Notify the searching player
+        this.outCourier.deliver(
+            pieceId,
+            GameMsg.createSearchStart(pieceId, { 
+                playerName, 
+                isYou: true,
+                message: "You are searching... (vulnerable for 2 seconds)"
+            })
+        );
+        
+        // Notify other players in the room
+        this.#broadcastToRoom(roomId, pieceId,
+            GameMsg.createSearchStart(null, { 
+                playerName, 
+                isYou: false,
+                message: `${playerName} is searching and vulnerable to attack!`
+            }));
+    }
+
+    /**
+     * Broadcasts search end notification
+     */
+    #broadcastSearchEnd(pieceId, playerName, foundWeapon, weapon) {
+        const piece = this.allPieces.get(pieceId);
+        const roomId = piece.getRoomId();
+        
+        const searchResult = {
+            playerName,
+            weaponFound: foundWeapon,
+            weapon: weapon ? weapon.name : null,
+            isYou: true
+        };
+
+        // Notify the searching player
+        this.outCourier.deliver(
+            pieceId,
+            GameMsg.createSearchEnd(pieceId, searchResult)
+        );
+        
+        // Notify other players in the room
+        searchResult.isYou = false;
+        this.#broadcastToRoom(roomId, pieceId,
+            GameMsg.createSearchEnd(null, searchResult));
+    }
+
+    /**
+     * Broadcasts battle start notification
+     */
+    #broadcastBattleStart(battleId, attackerId, pieces) {
+        const attacker = this.allPieces.get(attackerId);
+        const roomId = attacker.getRoomId();
+        
+        const battleData = {
+            battleId,
+            attacker: attacker.name,
+            participants: pieces.map(p => p.name),
+            roomName: this.worldMap.get(roomId).getName()
+        };
+
+        // Notify all participants
+        pieces.forEach(piece => {
+            const isParticipant = true;
+            this.outCourier.deliver(
+                piece.getPieceId(),
+                GameMsg.createBattleStart(piece.getPieceId(), { 
+                    ...battleData, 
+                    isParticipant,
+                    defender: piece.name
+                })
+            );
+        });
+
+        // Notify observers in the room
+        this.#broadcastToRoom(roomId, pieces.map(p => p.getPieceId()),
+            GameMsg.createBattleStart(null, { 
+                ...battleData, 
+                isParticipant: false
+            }));
+    }
+
+    /**
+     * Broadcasts battle end notification
+     */
+    #broadcastBattleEnd(battleId, winnerId, escapeIds, deadIds, participants) {
+        const winner = this.allPieces.get(winnerId);
+        const roomId = winner.getRoomId();
+        
+        const battleResult = {
+            battleId,
+            winner: winner.name,
+            escaped: escapeIds.map(id => this.allPieces.get(id).name),
+            killed: deadIds.map(id => this.allPieces.get(id).name),
+            description: `${winner.name} won the battle!`
+        };
+
+        // Notify all participants (alive and dead)
+        participants.forEach(piece => {
+            this.outCourier.deliver(
+                piece.getPieceId(),
+                GameMsg.createBattleEnd(piece.getPieceId(), battleResult)
+            );
+        });
+
+        // Notify observers in the room
+        const participantIds = participants.map(p => p.getPieceId());
+        this.#broadcastToRoom(roomId, participantIds,
+            GameMsg.createBattleEnd(null, battleResult));
+    }
+
+    /**
+     * Broadcasts message to all players in a room except excluded ones
+     */
+    #broadcastToRoom(roomId, excludeIds = [], message) {
+        const room = this.worldMap.get(roomId);
+        if (!room) return;
+        
+        const excludeArray = Array.isArray(excludeIds) ? excludeIds : [excludeIds];
+        
+        Array.from(room.getAllPieces())
+            .filter(pieceId => !excludeArray.includes(pieceId))
+            .forEach(pieceId => {
+                // Clone the message and set the correct recipient ID
+                const clonedMessage = { ...message };
+                clonedMessage.id = pieceId;
+                this.outCourier.deliver(pieceId, clonedMessage);
+            });
+    }
+
+    /**
+     * Checks win condition and broadcasts game end if applicable
+     */
+    #checkWinCondition() {
+        if (this.remainingPieces <= 1) {
+            // Find the last remaining piece
+            const alivePieces = Array.from(this.allPieces.values())
+                .filter(piece => piece.getState() !== Piece.STATE.DEAD);
+            
+            if (alivePieces.length === 1) {
+                const winner = alivePieces[0];
+                
+                // Broadcast game end to all players
+                for (const [pieceId, piece] of this.allPieces) {
+                    this.outCourier.deliver(
+                        pieceId,
+                        GameMsg.createGameState(pieceId, {
+                            type: 'MATCH_END',
+                            winner: winner.name,
+                            winnerId: winner.getPieceId(),
+                            isWinner: pieceId === winner.getPieceId()
+                        })
+                    );
+                }
+            }
+        }
+    }
+
+    /**
+     * Processes a chat message and broadcasts it to players in the same room
+     */
+    processChatMessage(pieceId, message) {
+        const piece = this.allPieces.get(pieceId);
+        if (!piece || piece.getState() === Piece.STATE.DEAD) {
+            return false;
+        }
+        
+        const roomId = piece.getRoomId();
+        const chatData = {
+            playerName: piece.name,
+            message: message,
+            timestamp: Date.now()
+        };
+        
+        // Broadcast to all players in the room
+        this.#broadcastToRoom(roomId, [],
+            GameMsg.createChatMessage(null, chatData));
+        
+        return true;
     }
 }
 
