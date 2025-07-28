@@ -40,7 +40,7 @@ class Match {
         this.maxPlayers = 5;
         this.countdownDuration = 10 * 1000; // 10 seconds countdown
         this.countdownTimerId = null;
-        this.gracePeriodDuration = 60 * 1000; // 60 seconds grace period
+        this.gracePeriodDuration = 10 * 1000; // 60 seconds grace period
         this.gracePeriodTimerId = null;
         this.gracePeriodStartTime = null;
         this.game = null;
@@ -49,6 +49,7 @@ class Match {
         this.state = Match.STATE.QUEUE;
         this.battleTimers = new Map(); // battleId -> timer data
         this.battleTimeout = 10 * 1000; // 10 seconds for battle responses
+        this.pingDelay = 3 * 1000; // 3 seconds as default
     }
 
     createPlayer (playerId = null, name) {
@@ -102,7 +103,7 @@ class Match {
         }
 
         const pieceId = player.getOwnPieceId();
-
+        console.log('MATCH COMMAND', command);
         // Validate the command first
         GameCommand.validate(command, (error, validatedCommand) => {
             if (error) {
@@ -195,17 +196,7 @@ class Match {
             );
             return;
         }
-
-        // Find target player by name
-        const targetPieceId = this.#findPieceByPlayerName(command.targetId);
-        if (!targetPieceId) {
-            this.outCourier.deliver(
-                playerId,
-                GameMsg.createError(playerId, `Player '${command.targetId}' not found`)
-            );
-            return;
-        }
-
+        console.log(pieceId);
         const battleId = this.game.startBattle(pieceId);
         if (!battleId) {
             this.outCourier.deliver(
@@ -245,7 +236,7 @@ class Match {
         this.game.respondToAttack(command.battleId, pieceId, command.decision);
         
         // Check if all participants have responded
-        if (timerData.responses.size === timerData.participants.size) {
+        if (timerData.responses.size - 1 === timerData.participants.size) {
             // All players responded, end battle early
             this.game.endBattle(command.battleId);
             this.#cleanupBattleTimer(command.battleId);
@@ -281,7 +272,7 @@ class Match {
         console.log('START MATCH');
         this.game = new GameEngine(this.gameCourier);
         //// HERE THE FUNCTIONALITY FOR PROCEDURAL OR AI GENERATION WILL BE USED
-        this.game.loadWorld('./server/data/simplerTestWorld.json');
+        this.game.loadWorld('./server/data/medievalWorld.json');
         
         // Create game pieces for all players
         for (let [playerId, player] of this.players) {
@@ -319,6 +310,7 @@ class Match {
             this.#endGracePeriod();
         }, this.gracePeriodDuration);
         
+        this.game.broadcastStart();
         // Send periodic grace period updates
         this.#scheduleGracePeriodUpdates();
         
@@ -353,14 +345,15 @@ class Match {
         const updateInterval = 10000; // Update every 10 seconds
         const timeElapsed = Date.now() - this.gracePeriodStartTime;
         const timeRemaining = Math.max(0, this.gracePeriodDuration - timeElapsed);
-        
+        const secondsRemaining = Math.ceil(timeRemaining / 1000);
+        console.log("DEV - ===========", secondsRemaining);
         if (timeRemaining > 0) {
             // Send update to all players
             this.#broadcastToAllPlayers(
                 GameMsg.createGracePeriod(null, {
                     active: true,
                     timeRemaining: timeRemaining,
-                    message: `Grace period: ${Math.ceil(timeRemaining / 1000)} seconds remaining`
+                    message: `Grace period: ${secondsRemaining} seconds remaining`
                 })
             );
             
@@ -484,7 +477,7 @@ class Match {
     #startBattleTimer(battleId, participants) {
         const timerId = setTimeout(() => {
             this.#onBattleTimerExpired(battleId);
-        }, this.battleTimeout);
+        }, this.battleTimeout + this.pingDelay);
         
         const timerData = {
             timerId,
@@ -502,11 +495,9 @@ class Match {
             if (playerId) {
                 this.outCourier.deliver(
                     playerId,
-                    GameMsg.createBattleStart(playerId, {
-                        battleId,
+                    GameMsg.createBattleTimer(playerId, {
                         timeLimit: this.battleTimeout,
-                        message: "You have 10 seconds to respond!",
-                        participants: participants.length
+                        message: `You have ${this.battleTimeout/1000} seconds to respond!`,
                     })
                 );
             }
@@ -520,14 +511,6 @@ class Match {
     #onBattleTimerExpired(battleId) {
         const timerData = this.battleTimers.get(battleId);
         if (!timerData) return;
-        
-        // Set default ESCAPE decision for non-responsive players
-        timerData.participants.forEach(pieceId => {
-            if (!timerData.responses.has(pieceId)) {
-                // Player didn't respond, treat as ESCAPE
-                this.game.respondToAttack(battleId, pieceId, Battle.DECISION.ESCAPE);
-            }
-        });
         
         // End the battle
         this.game.endBattle(battleId);

@@ -1,6 +1,7 @@
 /* Terminal Theme CSS Variables */
 :root {
     --bg-grad: linear-gradient(#1f213d, #5f2a54);
+    --terminal-grad: linear-gradient(to right, #1f213d, #00000000);
     --terminal-bg: #0d1117;
     --terminal-fg: #58a6ff;
     --terminal-green: #29da55;

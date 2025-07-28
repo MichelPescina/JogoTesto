@@ -10,22 +10,31 @@ const gameSocket = io({
     }
 });
 
+const keyboardModeMsg = '[w][a][s][d] move, [s] search, [t] chat';
+const terminalModeMsg = 'Enter a message or /help - Press [esc] to exit chat';
+const resToAttackMsg = 'Press [1] to attack or [3] to escape';
+
 // Game client state
 const gameState = {
     playerId: null,
     matchId: null,
+    battleId: null,
     currentRoom: null,
     isInBattle: false,
     isInGracePeriod: false,
     playerList: [],
-    terminal: null
+    terminal: null,
+    inputMode: null
 };
 
 // DOM elements
 const gameElements = {
     terminal: null,
     gameContainer: null,
-    statusBar: null
+    statusConn: null,
+    statusPlayer: null,
+    statusAttack: null,
+    statusWeapon: null,
 };
 
 /**
@@ -33,13 +42,19 @@ const gameElements = {
  */
 function setGameElements() {
     gameElements.gameContainer = document.getElementById('gameContainer');
-    gameElements.statusBar = document.getElementById('statusBar');
+    gameElements.statusConn = document.getElementById('connectionStatus');
+    gameElements.statusPlayer = document.getElementById('playerName');
+    gameElements.statusAttack = document.getElementById('playerAttack');
+    gameElements.statusWeapon = document.getElementById('playerWeapon');
     
     // Initialize terminal
     if (gameElements.gameContainer) {
         gameState.terminal = new Terminal('gameContainer');
         gameState.terminal.showWelcome();
         gameState.terminal.setInputCallback(handleTerminalInput);
+        gameState.terminal.setInputEnabled(false);
+        gameState.terminal.setInputPlaceholder(keyboardModeMsg);
+        gameState.inputMode = 'Keyboard';
     }
 }
 
@@ -57,19 +72,24 @@ function handleTerminalInput(input) {
         // Send command to server
         gameSocket.emit('gameCommand', command);
         
-        // Show local feedback for certain commands
-        switch (command.type) {
-            case 'MOVE':
-                gameState.terminal.showSystemMessage(`Moving ${command.direction}...`);
-                break;
-            case 'SEARCH':
-                gameState.terminal.showSystemMessage('Searching for weapons...');
-                break;
-            case 'CHAT':
-                // Chat will be echoed back from server
-                break;
-        }
+        showLocalFeedback(command);
     });
+}
+
+function showLocalFeedback (command) {
+    if (!command) return;
+    // Show local feedback for certain commands
+    switch (command.type) {
+        case 'MOVE':
+            gameState.terminal.showSystemMessage(`Moving ${command.direction}...`);
+            break;
+        case 'SEARCH':
+            gameState.terminal.showSystemMessage('Searching for weapons...');
+            break;
+        case 'CHAT':
+            // Chat will be echoed back from server
+            break;
+    }
 }
 
 /**
@@ -85,18 +105,11 @@ function parseGameCommand(input, callback) {
         return callback(new Error('Input cannot be empty'));
     }
 
-    try {
-        // Try to parse as JSON first
-        const command = JSON.parse(trimmed);
-        callback(null, command);
-    } catch (jsonError) {
-        // Parse as simple text command
-        parseTextCommand(trimmed, callback);
-    }
+    parseTextCommand(trimmed, callback);
 }
 
 /**
- * Parses simple text commands
+ * Parses simple text commands (only chat)
  */
 function parseTextCommand(input, callback) {
     const parts = input.toLowerCase().split(/\s+/);
@@ -105,23 +118,8 @@ function parseTextCommand(input, callback) {
     try {
         let command;
 
-        // Movement shortcuts
-        if (['north', 'south', 'east', 'west', 'n', 's', 'e', 'w'].includes(firstWord)) {
-            const directionMap = { 'n': 'north', 's': 'south', 'e': 'east', 'w': 'west' };
-            const direction = directionMap[firstWord] || firstWord;
-            command = { type: 'MOVE', direction: direction };
-        }
-        // Search command
-        else if (firstWord === 'search') {
-            command = { type: 'SEARCH' };
-        }
-        // Attack command
-        else if (firstWord === 'attack' && parts.length > 1) {
-            const targetId = parts[1];
-            command = { type: 'ATTACK', targetId: targetId };
-        }
         // Help command
-        else if (firstWord === 'help') {
+        if (firstWord === '/help') {
             showHelpMessage();
             return;
         }
@@ -141,15 +139,33 @@ function parseTextCommand(input, callback) {
  * Shows help message in terminal
  */
 function showHelpMessage() {
-    gameState.terminal.writeLine('=== COMMANDS ===', 'system');
-    gameState.terminal.writeLine('Movement: north, south, east, west (or n, s, e, w)', 'normal');
-    gameState.terminal.writeLine('Actions: search (find weapons)', 'normal');
-    gameState.terminal.writeLine('Combat: attack <player_name>', 'normal');
-    gameState.terminal.writeLine('Chat: Just type your message', 'normal');
-    gameState.terminal.writeLine('Help: help', 'normal');
-    gameState.terminal.writeLine('===============', 'system');
+    gameState.terminal.writeLine('=== Controls ===', 'warning');
+    gameState.terminal.writeLine('Movement: [W] north, [S] south, [D] east, [A] west', 'normal');
+    gameState.terminal.writeLine('[E] Search (find weapons)', 'normal');
+    gameState.terminal.writeLine('[Espace] Attack', 'normal');
+    gameState.terminal.writeLine('[T] Enable Chat', 'normal');
+    gameState.terminal.writeLine('[T] Disable Chat', 'normal');
+    gameState.terminal.writeLine('Help: in chat write /help', 'normal');
+    gameState.terminal.writeLine('================', 'warning');
 }
 
+
+function updateStatusConn (connected) {
+    if (connected) {
+        gameElements.statusConn.textContent = 'Connected';
+		gameElements.statusConn.className = 'status-connected';
+    }
+    else {
+        gameElements.statusConn.textContent = 'Disconnected';
+		gameElements.statusConn.className = 'status-disconnected';
+    }
+}
+
+function setPlayerStatus (player, attack, weapon) {
+    gameElements.statusPlayer.textContent = player || 'Loading...';
+	gameElements.statusAttack.textContent = `${attack}` || '1';
+    gameElements.statusAttack.textContent = weapon || 'None';
+}
 // Socket Event Handlers
 
 /**
@@ -157,6 +173,7 @@ function showHelpMessage() {
  */
 gameSocket.on('connect', () => {
     console.log('Connected to game server:', gameSocket.id);
+    updateStatusConn(true);
     if (gameState.terminal) {
         gameState.terminal.showSystemMessage('Connected to game server');
     }
@@ -167,6 +184,7 @@ gameSocket.on('connect', () => {
  */
 gameSocket.on('disconnect', () => {
     console.log('Disconnected from game server');
+    updateStatusConn(false);
     if (gameState.terminal) {
         gameState.terminal.showError('Disconnected from game server');
         gameState.terminal.setInputEnabled(false);
@@ -178,7 +196,9 @@ gameSocket.on('disconnect', () => {
  */
 gameSocket.on('session', (session) => {
     sessionStorage.setItem('sessionId', session.sessionId);
-    gameState.playerId = session.playerId;
+    setPlayerStatus(sessionStorage.playerName);
+    gameState.playerId = sessionStorage.playerId;
+    gameState.matchId = sessionStorage.matchId;
     console.log('Session established:', session);
 });
 
@@ -186,6 +206,7 @@ gameSocket.on('session', (session) => {
  * Handle successful match join
  */
 gameSocket.on('matchJoined', (data) => {
+    console.log('MATCH JOINED', data);
     gameState.matchId = data.matchId;
     gameState.playerId = data.playerId;
     
@@ -220,16 +241,18 @@ gameSocket.on('roomUpdate', (data) => {
         gameState.terminal.writeLine(`=== ${data.roomName} ===`, 'game-state');
         gameState.terminal.writeLine(data.description, 'normal');
         
+        if (data.exits && Object.keys(data.exits).length > 0) {
+            for (let exit in data.exits) {
+                gameState.terminal.writeLine(`To the ${exit}: ${data.exits[exit]}`, 'normal');
+            }
+        }
+
         if (data.players && data.players.length > 0) {
             gameState.terminal.writeLine(`Players here: ${data.players.join(', ')}`, 'normal');
         }
         
-        if (data.exits && Object.keys(data.exits).length > 0) {
-            gameState.terminal.writeLine(`Exits: ${Object.keys(data.exits).join(', ')}`, 'system');
-        }
-        
         if (data.weapon) {
-            gameState.terminal.writeLine(`A weapon is here: ${data.weapon}`, 'success');
+            gameState.terminal.writeLine(`There is something hidden here...`, 'success');
         }
         
         gameState.terminal.writeLine('', 'normal');
@@ -250,17 +273,34 @@ gameSocket.on('chatMessage', (data) => {
  */
 gameSocket.on('battleStart', (data) => {
     gameState.isInBattle = true;
+    gameState.battleId = data.battleId;
     
     if (gameState.terminal) {
-        gameState.terminal.showBattleMessage('=== BATTLE STARTED ===', true);
-        gameState.terminal.showBattleMessage(`${data.attacker} is attacking ${data.defender}!`, true);
+        gameState.terminal.showBattleMessage('=== BATTLE STARTED ===', false);
+        gameState.terminal.writeLine(`${data.attacker} is attacking ${data.defender}!`);
         
         if (data.isParticipant) {
-            gameState.terminal.showBattleMessage('You are in this battle! Choose your action:', true);
-            gameState.terminal.setInputPlaceholder('Enter: attack or escape');
+            if (data.isAttacker) {
+                gameState.terminal.writeLine("Wait for the other players responses!");
+            }
+            else {
+                gameState.terminal.writeLine('You are being attacked! Choose your action:');
+                gameState.terminal.writeLine('Press [1] to attack or [3] to try to escape', 'warning');
+                gameState.terminal.setInputPlaceholder(resToAttackMsg);
+            }
+            gameState.terminal.setInputEnabled(false);
         } else {
             gameState.terminal.showBattleMessage('You are watching this battle.', false);
         }
+    }
+});
+
+/**
+ * Handle battle timer message
+ */
+gameSocket.on('battleTimer', (data) => {
+    if (gameState.isInBattle) {
+        gameState.terminal.writeLine(data.message, 'alert');
     }
 });
 
@@ -269,12 +309,14 @@ gameSocket.on('battleStart', (data) => {
  */
 gameSocket.on('battleEnd', (data) => {
     gameState.isInBattle = false;
+    gameState.battleId = null;
+    let name = sessionStorage.playerName;
     
     if (gameState.terminal) {
-        gameState.terminal.showBattleMessage('=== BATTLE ENDED ===', true);
+        gameState.terminal.showBattleMessage('=== BATTLE ENDED ===', false);
         gameState.terminal.showBattleMessage(`Winner: ${data.winner}`, true);
-        gameState.terminal.showBattleMessage(`Result: ${data.description}`, false);
-        gameState.terminal.setInputPlaceholder('Enter command (w/a/s/d to move, search, or chat)');
+        gameState.terminal.showBattleMessage(`Result: ${data.description}`, true);
+        gameState.terminal.setInputPlaceholder(keyboardModeMsg);
     }
 });
 
@@ -286,7 +328,6 @@ gameSocket.on('searchStart', (data) => {
         gameState.terminal.showSystemMessage(`${data.playerName} started searching...`);
         if (data.isYou) {
             gameState.terminal.showSystemMessage('You are vulnerable while searching!');
-            gameState.terminal.setInputEnabled(false);
         }
     }
 });
@@ -295,17 +336,24 @@ gameSocket.on('searchStart', (data) => {
  * Handle search end
  */
 gameSocket.on('searchEnd', (data) => {
+    console.log(data);
     if (gameState.terminal) {
         if (data.weaponFound) {
-            gameState.terminal.showSystemMessage(`${data.playerName} found a ${data.weapon}!`, 'success');
+            gameState.terminal.showSystemMessage(`${data.playerName} found a ${data.weapon}!`, 'system');
         } else {
-            gameState.terminal.showSystemMessage(`${data.playerName} found nothing.`, 'warning');
+            gameState.terminal.showSystemMessage(`${data.playerName} found nothing.`, 'system');
         }
-        
         if (data.isYou) {
-            gameState.terminal.setInputEnabled(true);
+            if (data.weaponFound) {
+                setPlayerStatus(sessionStorage.playerName, 1 + data.weaponDmg, data.weapon);
+                gameState.terminal.writeLine(`You found a ${data.weapon}!`, 'success');
+            }
+            else {
+                gameState.terminal.writeLine(`${data.playerName} found nothing.`, 'warning');
+            }
         }
     }
+    
 });
 
 /**
@@ -316,9 +364,10 @@ gameSocket.on('gracePeriod', (data) => {
     
     if (gameState.terminal) {
         if (data.active) {
-            gameState.terminal.showSystemMessage(`Grace period: ${data.timeRemaining} seconds remaining`, 'warning');
+            //gameState.terminal.showSystemMessage(`Grace period: ${data.timeRemaining} seconds remaining`, 'warning');
+            gameState.terminal.showSystemMessage(data.message, 'warning');
         } else {
-            gameState.terminal.showSystemMessage('Grace period ended - combat is now allowed!', 'success');
+            gameState.terminal.showSystemMessage(data.message, 'success');
         }
     }
 });
@@ -333,11 +382,30 @@ gameSocket.on('playerJoined', (data) => {
 });
 
 /**
+ * Handle player death notifications
+ */
+gameSocket.on('playerDead', (data) => {
+    if (gameState.terminal) {
+        gameState.terminal.writeLine(data, 'alert');
+    }
+});
+
+/**
  * Handle player leave notifications
  */
 gameSocket.on('playerLeft', (data) => {
     if (gameState.terminal) {
-        gameState.terminal.showSystemMessage(`${data.playerName} left the game`, 'system');
+        switch (data.reason) {
+            case 'moved':
+                gameState.terminal.writeLine(`${data.playerName} left the location`);
+                break;
+            case 'escaped':
+                gameState.terminal.writeLine(`${data.playerName} escaped to safety!`);
+                break;
+            default:
+                gameState.terminal.showSystemMessage(`${data.playerName} left the game`, 'system');
+                break;
+        }
     }
 });
 
@@ -378,17 +446,82 @@ gameSocket.on('matchCountdown', (data) => {
 gameSocket.on('matchStart', (data) => {
     if (gameState.terminal) {
         gameState.terminal.showSystemMessage('MATCH STARTED!', 'success');
-        gameState.terminal.showSystemMessage('Grace period is active - no combat for 60 seconds', 'warning');
+        gameState.terminal.showSystemMessage('Grace period is active - no combat for 30 seconds', 'warning');
         gameState.terminal.setInputEnabled(true);
     }
 });
+
+/**
+ * Sets up event listeners for keyboard input
+ */
+function setupKeyboardListener() {
+    document.addEventListener('keydown', (event) => {
+        let command = null;
+        if (gameState.inputMode === 'Keyboard') {
+            switch (event.key.toLowerCase()) {
+                case 'w':
+                    command = { type: 'MOVE', direction: 'north' };
+                    break;
+                case 's':
+                    command = { type: 'MOVE', direction: 'south' };
+                    break;
+                case 'a':
+                    command = { type: 'MOVE', direction: 'west' };
+                    break;
+                case 'd':
+                    command = { type: 'MOVE', direction: 'east' };
+                    break;
+                case 'e':
+                    command = { type: 'SEARCH' };
+                    break;
+                case ' ':
+                    command = { type: 'ATTACK', targetId: gameState.playerId };
+                    break;
+                case 't':
+                    //// ENABLE CHAT
+                    gameState.terminal.setInputPlaceholder(terminalModeMsg);
+                    gameState.inputMode = 'Terminal';
+                    gameState.terminal.setInputEnabled(true);
+                    event.preventDefault();
+                    break;
+                case '1':
+                    if (gameState.isInBattle) {
+                        gameState.terminal.writeLine('You decided to ATTACK', 'alert');
+                        command = { type: 'RESPOND', battleId: gameState.battleId, decision: 'ATTACK' };
+                    }
+                    break;
+                case '3':
+                    if (gameState.isInBattle) {
+                        gameState.terminal.writeLine('You decided to ESCAPE', 'alert');
+                        command = { type: 'RESPOND', battleId: gameState.battleId, decision: 'ESCAPE' };
+                    }
+                    break;
+            }
+        }
+        else {
+            if (event.key === 'Escape') {
+                gameState.terminal.setInputPlaceholder(keyboardModeMsg);
+                gameState.inputMode = 'Keyboard';
+                gameState.terminal.setInputEnabled(false);
+            }
+        }
+        emitKeyboardCommand(command);
+        showLocalFeedback(command);
+    });
+}
+
+function emitKeyboardCommand (command) {
+    console.log(command);
+    if (!command) return false;
+    gameSocket.emit('gameCommand', command);
+}
 
 /**
  * Sets all game callbacks and initializes components
  */
 function setGameCallbacks() {
     // Any additional callbacks can be set here
-    
+    setupKeyboardListener();
     // Handle page visibility changes
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden && gameState.terminal) {

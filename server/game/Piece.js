@@ -15,6 +15,10 @@ class Piece {
         this.strength = 1;
     }
 
+    getName () {
+        return this.name;
+    }
+
     getPieceId() {
         return this.pieceId;
     }

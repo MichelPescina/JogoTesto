@@ -11,7 +11,9 @@ const GameMsg = require('./server/game/GameMsg');
 
 const app = express();
 const server = createServer(app);
-const io = new Server(server)
+const io = new Server(server, {
+    connectionStateRecovery: {}
+})
 
 // Initialize managers
 const sessionManager = new SessionManager();
@@ -74,6 +76,9 @@ io.on('connection', (socket) => {
                 case GameMsg.TYPE.BATTLE_START:
                     socket.emit('battleStart', msg.content.data);
                     break;
+                case GameMsg.TYPE.BATTLE_TIMER:
+                    socket.emit('battleTimer', msg.content.data);
+                    break;
                 case GameMsg.TYPE.BATTLE_END:
                     socket.emit('battleEnd', msg.content.data);
                     break;
@@ -91,6 +96,9 @@ io.on('connection', (socket) => {
                     break;
                 case GameMsg.TYPE.PLAYER_LEAVE:
                     socket.emit('playerLeft', msg.content.data);
+                    break;
+                case GameMsg.TYPE.PLAYER_DEAD:
+                    socket.emit('playerDead', msg.content.data);
                     break;
                 case GameMsg.TYPE.ERROR:
                     socket.emit('gameError', msg.content.data);

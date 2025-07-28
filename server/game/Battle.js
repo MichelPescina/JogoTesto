@@ -31,6 +31,8 @@ class Battle {
         this.pieceDecision = new Map(pieces.map(x => [x.pieceId, 'AWAITING']));
         this.pieceDecision.set(instigatorId, Battle.DECISION.ATTACK);
         this.escapeProb = escapeProb;
+        this.winnerName = null;
+        this.winnerWeapon = null;
     }
 
     /**
@@ -39,7 +41,7 @@ class Battle {
      * @param {string} decision - The action that will be taken, must be one of Battle.DECISION options.
      */
     setDecision(pieceId, decision) {
-        if (!this.pieceDecision.has(pieceId)) return false;
+        if (this.pieceDecision.get(pieceId) !== 'AWAITING') return false;
         this.pieceDecision.set(pieceId, decision);
         return true;
     }
@@ -57,6 +59,8 @@ class Battle {
             let cond2 = this.pieceDecision.get(curr.getPieceId()) === Battle.DECISION.ATTACK;
             return cond1 && cond2? curr : prev;
         }, null);
+        this.winnerName = strongest.getName();
+        this.winnerWeapon = strongest.weapon? strongest.weapon.name: 'Fists';
         // Creates result of battle
         let result = this.pieces.map(piece => {
             let name = piece.getPieceId();

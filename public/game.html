@@ -11,24 +11,17 @@
 
 <body>
 	<div class="container">
-		<!-- Game Header -->
-		<div id="gameHeader">
-			<div>
-				<pre class="ascii-art">
- ╦╔═╗╔═╗╔═╗╔╦╗╔═╗╔═╗╔╦╗╔═╗
- ║║ ║║ ╦║ ║ ║ ║╣ ╚═╗ ║ ║ ║
-╚╝╚═╝╚═╝╚═╝ ╩ ╚═╝╚═╝ ╩ ╚═╝
-
-Text-Based Battle Royale - Game Interface
-            	</pre>
-			</div>
-		</div>
+		
 
 		<!-- Game Status Bar -->
 		<div id="statusBar">
 			<div class="status-info">
-				<span id="playerInfo">Player: <span id="playerName">Loading...</span></span>
-				<span id="matchInfo">Match: <span id="matchId">Loading...</span></span>
+				<span id="playerInfo">
+					Player: <span id="playerName" class="terminal-line success">Loading...</span> 
+					Attack: <span id="playerAttack" class="terminal-line warning"> Loading... </span> 
+					Weapon: <span id="playerWeapon" class="terminal-line alert"> Loading... </span>
+				</span>
+				<!--<span id="matchInfo">Match: <span id="matchId">Loading...</span></span>-->
 				<span id="connectionStatus" class="status-connected">Connected</span>
 			</div>
 			<div class="game-controls">
@@ -277,27 +270,6 @@ Text-Based Battle Royale - Game Interface
 					window.location.href = '/';
 				}
 			});
-
-			// Update connection status
-			if (window.gameSocket) {
-				const statusElement = document.getElementById('connectionStatus');
-				
-				window.gameSocket.on('connect', function() {
-					statusElement.textContent = 'Connected';
-					statusElement.className = 'status-connected';
-				});
-
-				window.gameSocket.on('disconnect', function() {
-					statusElement.textContent = 'Disconnected';
-					statusElement.className = 'status-disconnected';
-				});
-
-				// Update player and match info when available
-				window.gameSocket.on('matchJoined', function(data) {
-					document.getElementById('playerName').textContent = data.playerName || 'Unknown';
-					document.getElementById('matchId').textContent = data.matchId || 'Unknown';
-				});
-			}
 
 			// Handle page visibility for mobile
 			document.addEventListener('visibilitychange', function() {

@@ -11,10 +11,7 @@ class Courier {
     }
 
     deliver(address, msg) {
-        console.log(this.addressToMethod);
-        console.log('Passing through: ', address);
         let func = this.addressToMethod.get(address);
-        console.log(func);
         if (func) func(msg);
         else {
             console.log(address);

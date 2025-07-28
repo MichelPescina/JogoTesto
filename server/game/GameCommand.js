@@ -125,6 +125,7 @@ class GameCommand {
      * @private
      */
     static #validateAttackCommand(command) {
+        console.log(command);
         if (!command.targetId || typeof command.targetId !== 'string') {
             throw new Error('Attack command requires a targetId');
         }

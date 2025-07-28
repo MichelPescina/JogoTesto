@@ -52,7 +52,7 @@ class Terminal {
         this.addTerminalStyles();
         
         // Focus on input
-        this.inputElement.focus();
+        //this.inputElement.focus();
     }
 
     /**
@@ -65,7 +65,7 @@ class Terminal {
                 background-color: var(--terminal-bg);
                 border: 1px solid var(--terminal-border);
                 border-radius: 8px;
-                height: 90vh;
+                height: 90%;
                 width: 90vw;
                 margin: 5vh auto;
                 display: flex;
@@ -168,6 +168,10 @@ class Terminal {
             .terminal-line.warning {
                 color: var(--terminal-yellow);
             }
+            
+            .terminal-line.alert {
+                color: var(--terminal-red);
+            }
 
             .terminal-line.chat {
                 color: var(--terminal-white);
@@ -175,6 +179,9 @@ class Terminal {
 
             .terminal-line.game-state {
                 color: var(--terminal-fg);
+                background-image: var(--terminal-grad);
+                background-repeat: repeat;
+                background-attachment: fixed;
                 border-left: 3px solid var(--terminal-cyan);
                 padding-left: 10px;
                 margin: 5px 0;
@@ -211,22 +218,24 @@ class Terminal {
      */
     setupEventListeners() {
         this.inputElement.addEventListener('keydown', (event) => {
-            switch (event.key) {
-                case 'Enter':
-                    this.handleInput();
-                    break;
-                case 'ArrowUp':
-                    event.preventDefault();
-                    this.navigateHistory('up');
-                    break;
-                case 'ArrowDown':
-                    event.preventDefault();
-                    this.navigateHistory('down');
-                    break;
-                case 'Tab':
-                    event.preventDefault();
-                    this.handleTabCompletion();
-                    break;
+            if (!this.inputElement.disabled) {
+                switch (event.key) {
+                    case 'Enter':
+                        this.handleInput();
+                        break;
+                    case 'ArrowUp':
+                        event.preventDefault();
+                        this.navigateHistory('up');
+                        break;
+                    case 'ArrowDown':
+                        event.preventDefault();
+                        this.navigateHistory('down');
+                        break;
+                    case 'Tab':
+                        event.preventDefault();
+                        this.handleTabCompletion();
+                        break;
+                }
             }
         });
 
@@ -329,7 +338,7 @@ class Terminal {
         line.className = `terminal-line ${type}`;
         
         if (type === 'system' || type === 'error') {
-            line.innerHTML = `<span class="terminal-timestamp">[${timestamp}]</span> ${text}`;
+            line.innerHTML = `<span class="terminal-timestamp">[${timestamp}] ${text}</span>`;
         } else {
             line.textContent = text;
         }
@@ -372,17 +381,17 @@ class Terminal {
      * Shows a welcome message
      */
     showWelcome() {
-        this.writeLine('='.repeat(60), 'system');
+        this.writeLine('='.repeat(60), 'normal');
         this.writeLine('Welcome to JogoTesto - Battle Royale Terminal!', 'success');
-        this.writeLine('='.repeat(60), 'system');
+        this.writeLine('='.repeat(60), 'normal');
         this.writeLine('');
-        this.writeLine('Commands:', 'system');
-        this.writeLine('  Movement: north, south, east, west (or n, s, e, w)', 'normal');
-        this.writeLine('  Actions: search (to find weapons)', 'normal');
-        this.writeLine('  Combat: attack <player> (during battle)', 'normal');
-        this.writeLine('  Chat: Type any message to chat with other players', 'normal');
-        this.writeLine('  History: Use ↑/↓ arrows to navigate command history', 'normal');
-        this.writeLine('  Tab completion: Press Tab to complete commands', 'normal');
+        this.writeLine('=== Controls ===', 'warning');
+        this.writeLine('Movement: [W] north, [S] south, [D] east, [A] west', 'normal');
+        this.writeLine('[E] Search (find weapons)', 'normal');
+        this.writeLine('[Espace] Attack', 'normal');
+        this.writeLine('[T] Enable Chat', 'normal');
+        this.writeLine('[Esc] Disable Chat', 'normal');
+        this.writeLine('Help: in chat write /help', 'normal');
         this.writeLine('');
         this.writeLine('Waiting for game to start...', 'warning');
         this.writeLine('');
@@ -392,6 +401,7 @@ class Terminal {
      * Updates the game state display
      */
     updateGameState(gameState) {
+        /*
         this.writeLine('Game State Updated:', 'game-state');
         if (gameState.room) {
             this.writeLine(`Current Room: ${gameState.room.name}`, 'normal');
@@ -415,6 +425,9 @@ class Terminal {
         }
         
         this.writeLine('');
+        */
+        if (gameState.type === 'ESCAPE')
+            this.writeLine(gameState.message, 'success');
     }
 
     /**

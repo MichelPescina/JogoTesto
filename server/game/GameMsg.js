@@ -26,11 +26,13 @@ class GameMsg {
         GAME_STATE: 'GAME_STATE',     // Complete game state update
         ROOM_UPDATE: 'ROOM_UPDATE',   // Room description and players
         BATTLE_START: 'BATTLE_START', // Combat initiation
+        BATTLE_TIMER: 'BATTLE_TIMER', // Battle timer status
         BATTLE_END: 'BATTLE_END',     // Combat resolution
         CHAT_MSG: 'CHAT_MSG',         // Chat messages
         ERROR: 'ERROR',               // Error notifications
         PLAYER_JOIN: 'PLAYER_JOIN',   // Player joined room
         PLAYER_LEAVE: 'PLAYER_LEAVE', // Player left room
+        PLAYER_DEAD: 'PLAYER_DEAD',   // Player died
         SEARCH_START: 'SEARCH_START', // Search action started
         SEARCH_END: 'SEARCH_END',     // Search action completed
         GRACE_PERIOD: 'GRACE_PERIOD'  // Grace period status
@@ -85,6 +87,20 @@ class GameMsg {
         return new GameMsg(playerId, GameMsg.ACTION.REPLY, {
             type: GameMsg.TYPE.BATTLE_START,
             data: battleData,
+            timestamp: Date.now()
+        });
+    }
+
+    /**
+     * Creates a battle start message
+     * @param {string} playerId - Target player ID
+     * @param {Object} data - Timer information
+     * @returns {GameMsg} - Battle start message
+     */
+    static createBattleTimer(playerId, data) {
+        return new GameMsg(playerId, GameMsg.ACTION.SHOW, {
+            type: GameMsg.TYPE.BATTLE_TIMER,
+            data: data,
             timestamp: Date.now()
         });
     }
@@ -159,6 +175,20 @@ class GameMsg {
         return new GameMsg(playerId, GameMsg.ACTION.SHOW, {
             type: GameMsg.TYPE.PLAYER_LEAVE,
             data: playerData,
+            timestamp: Date.now()
+        });
+    }
+
+    /**
+     * Creates a player leave notification
+     * @param {string} playerId - Target player ID
+     * @param {Object} playerData - Leaving player information
+     * @returns {GameMsg} - Player leave message
+     */
+    static createPlayerDead(playerId, message) {
+        return new GameMsg(playerId, GameMsg.ACTION.SHOW, {
+            type: GameMsg.TYPE.PLAYER_DEAD,
+            data: message,
             timestamp: Date.now()
         });
     }
